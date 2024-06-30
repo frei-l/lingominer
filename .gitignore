@@ -1,0 +1,20 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.python-version
+
+# IDE
+.idea/
+
+# database
+*.db
+dictionary/
+frequency/
+
+# testing
+test/
+
