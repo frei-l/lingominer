@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "lingominer"
+version = "0.1.0"
+description = ""
+authors = ["freil <l@freil.me>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.112.1"
+uvicorn = {extras = ["standard"], version = "^0.30.6"}
+langfuse = "^2.44.1"
+python-dotenv = "^1.0.1"
+sqlmodel = "^0.0.21"
+openai = "^1.42.0"
+requests = "^2.32.3"
+devtools = "^0.12.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
