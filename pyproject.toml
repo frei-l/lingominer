@@ -15,7 +15,11 @@ sqlmodel = "^0.0.21"
 openai = "^1.42.0"
 requests = "^2.32.3"
 devtools = "^0.12.2"
+chromadb = "^0.5.11"
 
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.6.9"
 
 [build-system]
 requires = ["poetry-core"]

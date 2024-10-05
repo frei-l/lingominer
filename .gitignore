@@ -11,9 +11,7 @@ __pycache__/
 .idea/
 
 # database
-*.db
-dictionary/
-frequency/
+database/
 
 # testing
 test/
