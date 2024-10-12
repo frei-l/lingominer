@@ -11,9 +11,8 @@ from lingominer.mochi.service import (
     get_by_id as get_mochi_config_by_id,
 )
 from lingominer.nlp import load
-from lingominer.schemas.card import CardBase
-from lingominer.schemas.source import BrowserSelection
-from lingominer.schemas.user import User
+from lingominer.schemas import CardBase, BrowserSelection, User
+from lingominer.cards import chroma as vdb
 
 router = APIRouter()
 
@@ -36,12 +35,27 @@ async def create_a_new_card(
 ) -> dict:
     logger.info(f"receive selection request: {item}")
     nlp = load(item.lang)
-    card: CardBase = nlp.generate(item)
-    logger.info(f"generate card: {card}")
-    card_id = db.create(db_session, card, user)
-    logger.info(f"save card: {card_id}")
+    card_base: CardBase = nlp.generate(item)
+    logger.info(f"generate card: {card_base}")
+    card = db.create(db_session, card_base, user)
+    logger.info(f"save card: {card}")
+    vdb.upsert_card(card)
 
-    return {"card_id": card_id}
+    return {"card_id": card.id}
+
+
+@router.get("/search")
+async def search_cards(
+    query: str,
+    db_session: Session = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+):
+    result = vdb.search_cards(query)
+    logger.info(f"search result: {result}")
+    cards = []
+    for id, word, score in zip(result["ids"][0], result["documents"][0], result["distances"][0]):
+        cards.append({"id": id, "word": word, "score": score})
+    return cards
 
 
 @router.delete("/{card_id}")
@@ -50,8 +64,9 @@ async def delete_a_card(
     db_session: Session = Depends(get_db_session),
     user: User = Depends(get_current_user),
 ):
-    pass
-
+    db.delete(db_session, card_id)
+    vdb.delete_card(card_id)
+    return {"message": "Card deleted successfully"}
 
 @router.post("/{card_id}/mochi/{config_id}", dependencies=[Depends(get_current_user)])
 async def create_a_mochi_card(

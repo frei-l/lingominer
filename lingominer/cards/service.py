@@ -11,7 +11,7 @@ def create(db_session: Session, card: CardBase, user: User):
     db_session.add(card_from_user)
     db_session.commit()
     db_session.refresh(card_from_user)
-    return card_from_user.id
+    return card_from_user
 
 
 def get(db_session: Session, user: User):
@@ -24,3 +24,10 @@ def get_by_id(db_session: Session, card_id: uuid.UUID):
     stmt = select(Card).where(Card.id == card_id)
     card = db_session.exec(stmt).first()
     return card
+
+
+def delete(db_session: Session, card_id: uuid.UUID):
+    stmt = select(Card).where(Card.id == card_id)
+    card = db_session.exec(stmt).first()
+    db_session.delete(card)
+    db_session.commit()

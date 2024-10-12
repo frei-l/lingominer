@@ -22,10 +22,8 @@ def create(db_session: Session, username: str):
 def verify_user(db_session: Session, token: str):
     if os.getenv("DEV") and not token:
         token = os.getenv("DEV_API_KEY")
-    logger.info(f"verify user: {token}")
     stmt = select(User).where(User.hash_token == sha256(token.encode()).hexdigest())
     user = db_session.exec(stmt).first()
-    logger.info(f"user: {user}")
     if user:
         return user
     return None

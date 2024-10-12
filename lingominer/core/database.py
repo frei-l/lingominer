@@ -3,7 +3,8 @@ from lingominer import schemas
 from lingominer.global_env import DB_DIR
 
 
-engine = create_engine(DB_DIR, echo=False)
+# Create a SQLite engine based on a local file
+engine = create_engine(f"sqlite:///{DB_DIR.as_posix()}", echo=False)
 
 
 def create_db_and_tables():

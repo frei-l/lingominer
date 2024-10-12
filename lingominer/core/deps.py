@@ -9,12 +9,12 @@ from lingominer.core.context_var import user_id
 auth_scheme = HTTPBearer()
 
 
-def get_db_session():
+async def get_db_session():
     with Session(engine, autoflush=False) as session:
         yield session
 
 
-def get_current_user(
+async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(auth_scheme),
     db_session: Session = Depends(get_db_session),
 ):
