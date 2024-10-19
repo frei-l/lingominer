@@ -1,6 +1,9 @@
 import re
 import sqlite3
 from functools import lru_cache
+import pathlib
+import importlib
+
 
 import requests
 
@@ -16,20 +19,24 @@ READER_BASE_URL = "https://r.jina.ai/"
 class BaseLanguage:
     _language_register = {}
     lemmatize_prompt: ChatPromptClient = langfuse.get_prompt("base.lemmatize")
-    summarize_prompt: ChatPromptClient = langfuse.get_prompt("summarize")
-    lookup_prompt: ChatPromptClient = langfuse.get_prompt("lookup")
-    simplify_prompt: ChatPromptClient = langfuse.get_prompt("simplify")
-    segment_prompt: ChatPromptClient = langfuse.get_prompt("segment")
+    summarize_prompt: ChatPromptClient = langfuse.get_prompt("base.summarize")
+    lookup_prompt: ChatPromptClient = langfuse.get_prompt("base.lookup")
+    simplify_prompt: ChatPromptClient = langfuse.get_prompt("base.simplify")
+    segment_prompt: ChatPromptClient = langfuse.get_prompt("base.segment")
 
     def __init_subclass__(cls, lang: str, **kwargs):
         super().__init_subclass__(**kwargs)
-        cls._language_register[lang] = cls
+        logger.info(f"register language: {cls.__name__}")
         cls.lang = lang
+        cls._language_register[lang] = cls
 
     @classmethod
+    @observe()
     def generate(cls, selection: BrowserSelection) -> CardBase:
         if selection.lang not in cls._language_register:
-            raise ValueError(f"Language {selection.lang} not supported")
+            raise ValueError(
+                f"Language {selection.lang} not supported, now only support {cls._language_register.keys()}"
+            )
         parser: BaseLanguage = cls._language_register[selection.lang]
         return parser.generate(selection)
 
@@ -72,12 +79,14 @@ class BaseLanguage:
     @classmethod
     def segment(cls, text: str, start: int, end: int) -> str:
         """Segment the text starting from the given position."""
-        decorated_text = text[:start] + "**" + text[start:end] + "**" + text[end:]
+        decorated_text = (
+            text[:start] + "<word>" + text[start:end] + "</word>" + text[end:]
+        )
         return llm_call(cls.segment_prompt, paragraph=decorated_text)
 
     @classmethod
     def lookup(cls, sentence: str, word: int, dictionary: int) -> str:
-        """Segment the text starting from the given position."""
+        """Lookup the given word in the dictionary."""
         return llm_call(
             cls.lookup_prompt, sentence=sentence, word=word, dictionary=dictionary
         )
@@ -87,4 +96,11 @@ class BaseLanguage:
     def summarize(cls, target_url: str) -> str:
         """Summarize the content of the given URL."""
         reader_response = requests.get(READER_BASE_URL + target_url)
-        return llm_call(cls.summarize_prompt, context=reader_response.text)
+        return llm_call(cls.summarize_prompt, website=reader_response.text)
+
+
+def generate_note(selection: BrowserSelection):
+    return BaseLanguage.generate(selection)
+
+
+from lingominer.nlp.plugin import english, german

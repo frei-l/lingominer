@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from lingominer.auth.service import create
-from lingominer.core.deps import get_current_user, get_db_session
+from lingominer.base.deps import get_current_user, get_db_session
 from lingominer.schemas.user import User
 
 router = APIRouter()

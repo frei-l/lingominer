@@ -4,15 +4,13 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from lingominer.cards import service as db
-from lingominer.core.deps import get_current_user, get_db_session
-from lingominer.logger import logger
-from lingominer.mochi.service import (
-    get_by_id as get_mochi_config_by_id,
-)
-from lingominer.nlp import load
-from lingominer.schemas import CardBase, BrowserSelection, User
+from lingominer.base.deps import get_current_user, get_db_session
 from lingominer.cards import chroma as vdb
+from lingominer.cards import service as db
+from lingominer.logger import logger
+from lingominer.integration.service import get_by_id as get_mochi_config_by_id
+from lingominer.nlp import generate_note
+from lingominer.schemas import BrowserSelection, User
 
 router = APIRouter()
 
@@ -34,8 +32,7 @@ async def create_a_new_card(
     user: User = Depends(get_current_user),
 ) -> dict:
     logger.info(f"receive selection request: {item}")
-    nlp = load(item.lang)
-    card_base: CardBase = nlp.generate(item)
+    card_base = generate_note(item)
     logger.info(f"generate card: {card_base}")
     card = db.create(db_session, card_base, user)
     logger.info(f"save card: {card}")
@@ -53,7 +50,9 @@ async def search_cards(
     result = vdb.search_cards(query)
     logger.info(f"search result: {result}")
     cards = []
-    for id, word, score in zip(result["ids"][0], result["documents"][0], result["distances"][0]):
+    for id, word, score in zip(
+        result["ids"][0], result["documents"][0], result["distances"][0]
+    ):
         cards.append({"id": id, "word": word, "score": score})
     return cards
 
@@ -68,6 +67,7 @@ async def delete_a_card(
     vdb.delete_card(card_id)
     return {"message": "Card deleted successfully"}
 
+
 @router.post("/{card_id}/mochi/{config_id}", dependencies=[Depends(get_current_user)])
 async def create_a_mochi_card(
     card_id: uuid.UUID,
@@ -80,7 +80,7 @@ async def create_a_mochi_card(
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     if not config:
-        raise HTTPException(status_code=404, detail="Mapping not found")
+        raise HTTPException(status_code=404, detail="Mochi config not found")
 
     # Prepare the Mochi API request payload
     mochi_payload = {
@@ -88,8 +88,8 @@ async def create_a_mochi_card(
         "deck-id": config.deck_id,
         "template-id": config.template_id,
         "fields": {
-            field.foreign_id: {
-                "id": field.foreign_id,
+            config.fields[field.id]: {
+                "id": config.fields[field.id],
                 "value": getattr(card, field.source),
             }
             for field in config.mapping.fields

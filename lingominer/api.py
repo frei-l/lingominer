@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from lingominer.auth.view import router as auth_router
 from lingominer.cards.view import router as cards_router
 from lingominer.mappings.view import router as mappings_router
-from lingominer.mochi.view import router as mochi_router
+from lingominer.integration.view import router as integration_router
 
 
 app = FastAPI(title="api")
@@ -24,4 +24,4 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(cards_router, prefix="/cards", tags=["cards"])
 app.include_router(mappings_router, prefix="/mappings", tags=["mappings"])
-app.include_router(mochi_router, prefix="/mochi", tags=["mochi"])
+app.include_router(integration_router, prefix="/integration", tags=["integration"])

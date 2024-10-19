@@ -3,7 +3,7 @@ import os
 import uuid
 
 from lingominer.global_env import CHROMA_DIR
-from lingominer.core.context_var import user_id
+from lingominer.base.context_var import user_id_var
 from lingominer.schemas import Card
 import chromadb.utils.embedding_functions as embedding_functions
 
@@ -19,7 +19,7 @@ card_field_id = {"word": 0}
 
 
 def get_collection_name():
-    return f"{user_id.get()}"
+    return f"{user_id_var.get()}"
 
 
 def upsert_card(card: Card):

@@ -1,6 +1,5 @@
-from lingominer.nlp.language import load, BaseLanguage
+from lingominer.nlp.language import generate_note
 
 __all__ = [
-    "load",
-    "BaseLanguage",
+    "generate_note",
 ]
