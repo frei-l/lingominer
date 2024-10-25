@@ -2,7 +2,7 @@ import uuid
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from lingominer.base.deps import get_current_user, get_db_session
 from lingominer.cards import chroma as vdb
@@ -11,17 +11,22 @@ from lingominer.logger import logger
 from lingominer.integration.service import get_by_id as get_mochi_config_by_id
 from lingominer.nlp import generate_note
 from lingominer.schemas import BrowserSelection, User
+from lingominer.schemas.card import Language, Card, CardStatus
 
 router = APIRouter()
 
 
 @router.get("/")
 async def get_all_cards(
+    lang: Language = Language.English,
     db_session: Session = Depends(get_db_session),
     user: User = Depends(get_current_user),
 ) -> dict:
     logger.info(f"get cards for user: {user}")
-    cards = db.get(db_session, user)
+    stmt = select(Card).where(
+        Card.user_id == user.id, Card.status == CardStatus.NEW, Card.lang == lang
+    )
+    cards = db_session.exec(stmt).all()
     return {"cards": cards}
 
 
@@ -88,8 +93,8 @@ async def create_a_mochi_card(
         "deck-id": config.deck_id,
         "template-id": config.template_id,
         "fields": {
-            config.fields[field.id]: {
-                "id": config.fields[field.id],
+            config.fields[str(field.id)]: {
+                "id": config.fields[str(field.id)],
                 "value": getattr(card, field.source),
             }
             for field in config.mapping.fields

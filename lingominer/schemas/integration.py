@@ -19,7 +19,7 @@ class MochiConfig(SQLModel, table=True):
     template_id: str
     template_name: str
 
-    fields: dict[str, str] = Field(sa_type=JSON)
+    fields: dict[uuid.UUID, str] = Field(sa_type=JSON)
     """the key is the field id in lingominer, the value is id in mochi"""
 
     mapping_id: uuid.UUID = Field(foreign_key="mapping.id")
