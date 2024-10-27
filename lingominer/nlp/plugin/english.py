@@ -1,4 +1,3 @@
-
 from lingominer.nlp.language import BaseLanguage
 from lingominer.logger import logger
 from lingominer.schemas import BrowserSelection, CardBase, CardType
@@ -13,28 +12,41 @@ class English(BaseLanguage, lang="en"):
     @classmethod
     @observe()
     def generate(cls, bs: BrowserSelection) -> CardBase:
-        langfuse_context.update_current_observation(name="German card generation")
+        langfuse_context.update_current_observation(name="English card generation")
+        basic_info = cls.preprocess(bs.text, bs.start, bs.end)
+
         selection = bs.text[bs.start : bs.end]
-        if len(selection.split(" ")) > 1:
+        word = basic_info["word"]
+        sentence = basic_info["sentence"]
+        expression = basic_info["expression"]
+        lemma = None
+
+        if len(basic_info["expression"]) > 1:
             card_type = CardType.expression
-            raise NotImplementedError("expression is not implemented: " + selection)
         else:
             card_type = CardType.singleWord
-            word = selection
-        sentence = cls.segment(bs.text, bs.start, bs.end)
-        logger.info(f"sentence: {sentence}")
 
-        lemma = cls.lemmatize(sentence, word)
-        logger.info(f"lemma: {lemma}")
+        for lemma in basic_info["lemma"]:
+            entries = {}
+            try:
+                entry = cls.explain(lemma)
+                entries[lemma] = entry
+            except KeyError:
+                logger.warning(f"entry not found for lemma: {lemma}")
+            # if entry is not empty, get longest one
+            if entries:
+                longest_key = max(entries, key=lambda k: len(entries[k]))
+                lemma = longest_key
+                entry = entries[longest_key]
+            else:
+                # if no entry found, use the shortest key as lemma
+                lemma = min(entries.keys(), key=len)
 
         summary = cls.summarize(bs.url)
         logger.info(f"summary: {summary}")
 
         frequency = cls.frequncy(lemma)
         logger.info(f"frequency: {frequency}")
-
-        entry = cls.explain(lemma)
-        logger.info(f"entry: {entry}")
 
         explanation = cls.lookup(sentence, word, entry)
         logger.info(f"explanation: {explanation}")
@@ -52,7 +64,7 @@ class English(BaseLanguage, lang="en"):
             explanation=explanation,
             sentence=sentence,
             simple_sentence=simple_sentence,
-            expression=lemma,
+            expression=expression,
             pos_start=bs.start,
             pos_end=bs.end,
             paragraph=bs.text,

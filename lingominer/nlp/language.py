@@ -23,6 +23,7 @@ class BaseLanguage:
     lookup_prompt: ChatPromptClient = langfuse.get_prompt("base.lookup")
     simplify_prompt: ChatPromptClient = langfuse.get_prompt("base.simplify")
     segment_prompt: ChatPromptClient = langfuse.get_prompt("base.segment")
+    preprocess_prompt: ChatPromptClient = langfuse.get_prompt("base.generate")
 
     def __init_subclass__(cls, lang: str, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -39,6 +40,13 @@ class BaseLanguage:
             )
         parser: BaseLanguage = cls._language_register[selection.lang]
         return parser.generate(selection)
+
+    @classmethod
+    @observe()
+    def preprocess(cls, text: str, start: int, end: int) -> dict:
+        """Preprocess the selection before generating the note."""
+        decorated_text = text[:start] + "**" + text[start:end] + "**" + text[end:]
+        return llm_call(cls.preprocess_prompt, text=decorated_text)
 
     @classmethod
     def explain(cls, word: str):

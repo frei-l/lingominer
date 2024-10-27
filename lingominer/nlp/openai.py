@@ -1,7 +1,6 @@
 from langfuse.openai import OpenAI
 from langfuse.model import ChatPromptClient
-from langfuse.decorators import langfuse_context, observe
-
+import json
 import os
 
 client = OpenAI(
@@ -10,15 +9,15 @@ client = OpenAI(
 )
 
 
-@observe(as_type="generation")
 def llm_call(prompt: ChatPromptClient, **kwargs):
     message = prompt.compile(**kwargs)
-    langfuse_context.update_current_observation(
-        name=prompt.name,
-        prompt=prompt
-        )
     response = client.chat.completions.create(
-        model=prompt.config["model"],
         messages=[{"role": "system", "content": message}],
+        langfuse_prompt=prompt,
+        name=prompt.name,
+        **prompt.config
     )
-    return response.choices[0].message.content
+    if prompt.config.get("response_format"):
+        return json.loads(response.choices[0].message.content)
+    else:
+        return response.choices[0].message.content
