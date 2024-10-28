@@ -116,7 +116,8 @@ async def create_a_mochi_card(
         raise HTTPException(
             status_code=response.status_code, detail=f"{response.json()}"
         )
-
+    card.status = CardStatus.LEARNING
+    db_session.commit()
     return {
         "message": "Mochi card created successfully",
         "mochi_response": response.json(),

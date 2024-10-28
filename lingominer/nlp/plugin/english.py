@@ -33,14 +33,15 @@ class English(BaseLanguage, lang="en"):
                 entries[lemma] = entry
             except KeyError:
                 logger.warning(f"entry not found for lemma: {lemma}")
+        if entries:
             # if entry is not empty, get longest one
-            if entries:
-                longest_key = max(entries, key=lambda k: len(entries[k]))
-                lemma = longest_key
-                entry = entries[longest_key]
-            else:
-                # if no entry found, use the shortest key as lemma
-                lemma = min(entries.keys(), key=len)
+            longest_key = max(entries, key=lambda k: len(entries[k]))
+            lemma = longest_key
+            entry = entries[longest_key]
+        else:
+            # if no entry found, use the shortest key as lemma
+            lemma = min(basic_info["lemma"], key=len)
+            entry = None
 
         summary = cls.summarize(bs.url)
         logger.info(f"summary: {summary}")
@@ -51,7 +52,7 @@ class English(BaseLanguage, lang="en"):
         explanation = cls.lookup(sentence, word, entry)
         logger.info(f"explanation: {explanation}")
 
-        simple_sentence = cls.simplify(sentence, word)
+        simple_sentence = cls.simplify(sentence, expression)
         logger.info(f"simple_sentence: {simple_sentence}")
 
         return CardBase(

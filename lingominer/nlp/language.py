@@ -1,19 +1,13 @@
 import re
 import sqlite3
 from functools import lru_cache
-import pathlib
-import importlib
-
-
-import requests
 
 from lingominer.global_env import DICTIONARY_DIR
 from lingominer.logger import logger
-from lingominer.schemas import BrowserSelection, CardBase
 from lingominer.nlp.langfuse import ChatPromptClient, langfuse, observe
 from lingominer.nlp.openai import llm_call
-
-READER_BASE_URL = "https://r.jina.ai/"
+from lingominer.nlp.jina import scrape_url
+from lingominer.schemas import BrowserSelection, CardBase
 
 
 class BaseLanguage:
@@ -103,8 +97,7 @@ class BaseLanguage:
     @lru_cache(maxsize=32)
     def summarize(cls, target_url: str) -> str:
         """Summarize the content of the given URL."""
-        reader_response = requests.get(READER_BASE_URL + target_url)
-        return llm_call(cls.summarize_prompt, website=reader_response.text)
+        return llm_call(cls.summarize_prompt, website=scrape_url(target_url))
 
 
 def generate_note(selection: BrowserSelection):
