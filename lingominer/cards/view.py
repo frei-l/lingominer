@@ -41,7 +41,7 @@ async def create_a_new_card(
     logger.info(f"generate card: {card_base}")
     card = db.create(db_session, card_base, user)
     logger.info(f"save card: {card}")
-    vdb.upsert_card(card)
+    # vdb.upsert_card(card)
 
     return {"card_id": card.id}
 
@@ -81,6 +81,8 @@ async def create_a_mochi_card(
 ):
     # Fetch the card from the database
     card = db.get_by_id(db_session, card_id)
+    card.status = CardStatus.LEARNING
+    db_session.commit()
     config = get_mochi_config_by_id(db_session, config_id)
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
@@ -116,8 +118,6 @@ async def create_a_mochi_card(
         raise HTTPException(
             status_code=response.status_code, detail=f"{response.json()}"
         )
-    card.status = CardStatus.LEARNING
-    db_session.commit()
     return {
         "message": "Mochi card created successfully",
         "mochi_response": response.json(),
