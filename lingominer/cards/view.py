@@ -12,6 +12,7 @@ from lingominer.integration.service import get_by_id as get_mochi_config_by_id
 from lingominer.nlp import generate_note
 from lingominer.schemas import BrowserSelection, User
 from lingominer.schemas.card import Language, Card, CardStatus
+from lingominer.global_env import AUDIO_DIR
 
 router = APIRouter()
 
@@ -81,8 +82,8 @@ async def create_a_mochi_card(
 ):
     # Fetch the card from the database
     card = db.get_by_id(db_session, card_id)
-    card.status = CardStatus.LEARNING
-    db_session.commit()
+    # card.status = CardStatus.LEARNING
+    # db_session.commit()
     config = get_mochi_config_by_id(db_session, config_id)
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
@@ -118,6 +119,24 @@ async def create_a_mochi_card(
         raise HTTPException(
             status_code=response.status_code, detail=f"{response.json()}"
         )
+    card_id = response.json()["id"]
+
+    async with httpx.AsyncClient() as client:
+        file_name = card.simple_sentence_audio.removeprefix(
+            "![simple_sentence]("
+        ).removesuffix(")")
+        file_path = AUDIO_DIR / file_name
+        url = f"https://app.mochi.cards/api/cards/{card_id}/attachments/{file_name}"
+        with open(file_path, "rb") as audio_file:
+            data = {"file": (file_name, audio_file, "audio/wav")}
+            attachment_response = await client.post(url, files=data, auth=auth)
+
+    if attachment_response.status_code != 200:
+        raise HTTPException(
+            status_code=attachment_response.status_code,
+            detail=f"{attachment_response.text}",
+        )
+
     return {
         "message": "Mochi card created successfully",
         "mochi_response": response.json(),

@@ -5,6 +5,8 @@ from lingominer.nlp.langfuse import langfuse, langfuse_context, observe
 
 
 class English(BaseLanguage, lang="en"):
+    voice_code = "en-US-AndrewMultilingualNeural"
+
     @classmethod
     def frequncy(cls, word: str):
         return 1
@@ -55,6 +57,9 @@ class English(BaseLanguage, lang="en"):
         simple_sentence = cls.simplify(sentence, expression)
         logger.info(f"simple_sentence: {simple_sentence}")
 
+        simple_sentence_audio = cls.tts(simple_sentence.replace("==", ""))
+        logger.info(f"simple_sentence_audio: {simple_sentence_audio}")
+
         return CardBase(
             type=card_type,
             lang=cls.lang,
@@ -65,6 +70,7 @@ class English(BaseLanguage, lang="en"):
             explanation=explanation,
             sentence=sentence,
             simple_sentence=simple_sentence,
+            simple_sentence_audio=f"![simple_sentence]({simple_sentence_audio})",
             expression=expression,
             pos_start=bs.start,
             pos_end=bs.end,

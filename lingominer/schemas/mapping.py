@@ -15,6 +15,7 @@ class MappingFieldSrc(str, Enum):
     explanation = "explanation"
     sentence = "sentence"
     simple_sentence = "simple_sentence"
+    simple_sentence_audio = "simple_sentence_audio"
     expression = "expression"
     selection = "selection"
     paragraph = "paragraph"

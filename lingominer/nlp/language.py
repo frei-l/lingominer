@@ -1,23 +1,25 @@
 import re
 import sqlite3
+import uuid
 from functools import lru_cache
 
-from lingominer.global_env import DICTIONARY_DIR
+from lingominer.global_env import AUDIO_DIR, DICTIONARY_DIR
 from lingominer.logger import logger
+from lingominer.nlp.azure import generate_audio
+from lingominer.nlp.jina import scrape_url
 from lingominer.nlp.langfuse import ChatPromptClient, langfuse, observe
 from lingominer.nlp.openai import llm_call
-from lingominer.nlp.jina import scrape_url
 from lingominer.schemas import BrowserSelection, CardBase
 
 
 class BaseLanguage:
     _language_register = {}
-    lemmatize_prompt: ChatPromptClient = langfuse.get_prompt("base.lemmatize")
     summarize_prompt: ChatPromptClient = langfuse.get_prompt("base.summarize")
     lookup_prompt: ChatPromptClient = langfuse.get_prompt("base.lookup")
     simplify_prompt: ChatPromptClient = langfuse.get_prompt("base.simplify")
-    segment_prompt: ChatPromptClient = langfuse.get_prompt("base.segment")
     preprocess_prompt: ChatPromptClient = langfuse.get_prompt("base.generate")
+    voice_code: str = None
+    lang: str = None
 
     def __init_subclass__(cls, lang: str, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -69,22 +71,9 @@ class BaseLanguage:
         return value[1]
 
     @classmethod
-    def simplify(cls, sentence: str, word: str):
+    def simplify(cls, sentence: str, word: str) -> str:
         """rephrase the raw sentence with simple words"""
         return llm_call(cls.simplify_prompt, sentence=sentence, word=word)
-
-    @classmethod
-    def lemmatize(cls, sentence: str, word: str):
-        """Lemmatize the given word within the context of the sentence."""
-        return llm_call(cls.lemmatize_prompt, sentence=sentence, word=word)
-
-    @classmethod
-    def segment(cls, text: str, start: int, end: int) -> str:
-        """Segment the text starting from the given position."""
-        decorated_text = (
-            text[:start] + "<word>" + text[start:end] + "</word>" + text[end:]
-        )
-        return llm_call(cls.segment_prompt, paragraph=decorated_text)
 
     @classmethod
     def lookup(cls, sentence: str, word: int, dictionary: int) -> str:
@@ -92,6 +81,15 @@ class BaseLanguage:
         return llm_call(
             cls.lookup_prompt, sentence=sentence, word=word, dictionary=dictionary
         )
+
+    @classmethod
+    def tts(cls, sentence: str):
+        """Generate the audio of the given sentence."""
+        # generate file name with random uuid
+        file_name: str = cls.lang + str(uuid.uuid4())[:8] + ".wav"
+        file_path = AUDIO_DIR / file_name
+        generate_audio(sentence, file_path.as_posix(), cls.voice_code)
+        return file_name
 
     @classmethod
     @lru_cache(maxsize=32)

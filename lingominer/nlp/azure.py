@@ -5,12 +5,12 @@ import azure.cognitiveservices.speech as speechsdk
 from lingominer.logger import logger
 
 
-def generate_audio(text: str, filename: str):
+def generate_audio(text: str, filename: str, voice_code: str):
     speech_config = speechsdk.SpeechConfig(
         subscription=os.environ.get("AZURE_SPEECH_KEY"),
         region=os.environ.get("AZURE_SPEECH_REGION"),
     )
-    speech_config.speech_synthesis_voice_name = "en-US-AndrewMultilingualNeural"
+    speech_config.speech_synthesis_voice_name = voice_code
     audio_config = speechsdk.audio.AudioOutputConfig(filename=filename)
     speech_synthesizer = speechsdk.SpeechSynthesizer(
         speech_config=speech_config, audio_config=audio_config

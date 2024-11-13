@@ -39,9 +39,9 @@ class CardBase(SQLModel):
     explanation: str = Field(description="explanation of the word in dictionary")
     sentence: str = Field(description="the sentence where the word is in")
     simple_sentence: str = Field(description="the sentence after simplified")
-    # simple_sentence_audio: Optional[str] = Field(
-    #     default=None, description="file path of the audio of the simplified sentence"
-    # )
+    simple_sentence_audio: str = Field(
+        description="file path of the audio of the simplified sentence"
+    )
     expression: str = Field(description="the expression when multiple words dectected")
     pos_start: int = Field(description="start position of the selection in the text")
     pos_end: int = Field(description="end position of the selection in the text")
