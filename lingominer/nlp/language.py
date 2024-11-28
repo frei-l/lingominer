@@ -21,6 +21,8 @@ class BaseLanguage:
     voice_code: str = None
     lang: str = None
 
+    _summarize_cache = {}
+
     def __init_subclass__(cls, lang: str, **kwargs):
         super().__init_subclass__(**kwargs)
         logger.info(f"register language: {cls.__name__}")
@@ -29,20 +31,20 @@ class BaseLanguage:
 
     @classmethod
     @observe()
-    def generate(cls, selection: BrowserSelection) -> CardBase:
+    async def generate(cls, selection: BrowserSelection) -> CardBase:
         if selection.lang not in cls._language_register:
             raise ValueError(
                 f"Language {selection.lang} not supported, now only support {cls._language_register.keys()}"
             )
         parser: BaseLanguage = cls._language_register[selection.lang]
-        return parser.generate(selection)
+        return await parser.generate(selection)
 
     @classmethod
     @observe()
-    def preprocess(cls, text: str, start: int, end: int) -> dict:
+    async def preprocess(cls, text: str, start: int, end: int) -> dict:
         """Preprocess the selection before generating the note."""
         decorated_text = text[:start] + "**" + text[start:end] + "**" + text[end:]
-        return llm_call(cls.preprocess_prompt, text=decorated_text)
+        return await llm_call(cls.preprocess_prompt, text=decorated_text)
 
     @classmethod
     def explain(cls, word: str):
@@ -71,31 +73,34 @@ class BaseLanguage:
         return value[1]
 
     @classmethod
-    def simplify(cls, sentence: str, word: str) -> str:
+    async def simplify(cls, sentence: str, word: str) -> str:
         """rephrase the raw sentence with simple words"""
-        return llm_call(cls.simplify_prompt, sentence=sentence, word=word)
+        return await llm_call(cls.simplify_prompt, sentence=sentence, word=word)
 
     @classmethod
-    def lookup(cls, sentence: str, word: int, dictionary: int) -> str:
+    async def lookup(cls, sentence: str, word: int, dictionary: int) -> str:
         """Lookup the given word in the dictionary."""
-        return llm_call(
+        return await llm_call(
             cls.lookup_prompt, sentence=sentence, word=word, dictionary=dictionary
         )
 
     @classmethod
-    def tts(cls, sentence: str):
+    async def tts(cls, sentence: str):
         """Generate the audio of the given sentence."""
         # generate file name with random uuid
         file_name: str = cls.lang + str(uuid.uuid4())[:8] + ".wav"
         file_path = AUDIO_DIR / file_name
-        generate_audio(sentence, file_path.as_posix(), cls.voice_code)
+        await generate_audio(sentence, file_path.as_posix(), cls.voice_code)
         return file_name
 
     @classmethod
-    @lru_cache(maxsize=32)
-    def summarize(cls, target_url: str) -> str:
+    async def summarize(cls, target_url: str) -> str:
         """Summarize the content of the given URL."""
-        return llm_call(cls.summarize_prompt, website=scrape_url(target_url))
+        if target_url in cls._summarize_cache:
+            return cls._summarize_cache[target_url]
+        result = await llm_call(cls.summarize_prompt, website=scrape_url(target_url))
+        cls._summarize_cache[target_url] = result
+        return result
 
 
 def generate_note(selection: BrowserSelection):

@@ -13,9 +13,9 @@ class English(BaseLanguage, lang="en"):
 
     @classmethod
     @observe()
-    def generate(cls, bs: BrowserSelection) -> CardBase:
+    async def generate(cls, bs: BrowserSelection) -> CardBase:
         langfuse_context.update_current_observation(name="English card generation")
-        basic_info = cls.preprocess(bs.text, bs.start, bs.end)
+        basic_info = await cls.preprocess(bs.text, bs.start, bs.end)
 
         selection = bs.text[bs.start : bs.end]
         word = basic_info["word"]
@@ -45,19 +45,19 @@ class English(BaseLanguage, lang="en"):
             lemma = min(basic_info["lemma"], key=len)
             entry = None
 
-        summary = cls.summarize(bs.url)
+        summary = await cls.summarize(bs.url)
         logger.info(f"summary: {summary}")
 
         frequency = cls.frequncy(lemma)
         logger.info(f"frequency: {frequency}")
 
-        explanation = cls.lookup(sentence, word, entry)
+        explanation = await cls.lookup(sentence, word, entry)
         logger.info(f"explanation: {explanation}")
 
-        simple_sentence = cls.simplify(sentence, expression)
+        simple_sentence = await cls.simplify(sentence, expression)
         logger.info(f"simple_sentence: {simple_sentence}")
 
-        simple_sentence_audio = cls.tts(simple_sentence.replace("==", ""))
+        simple_sentence_audio = await cls.tts(simple_sentence.replace("==", ""))
         logger.info(f"simple_sentence_audio: {simple_sentence_audio}")
 
         return CardBase(
