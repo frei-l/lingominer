@@ -1,8 +1,10 @@
+import os
 import re
 import sqlite3
+import tempfile
 import uuid
-from functools import lru_cache
 
+from lingominer.base.oss import upload_file
 from lingominer.global_env import AUDIO_DIR, DICTIONARY_DIR
 from lingominer.logger import logger
 from lingominer.nlp.azure import generate_audio
@@ -89,8 +91,14 @@ class BaseLanguage:
         """Generate the audio of the given sentence."""
         # generate file name with random uuid
         file_name: str = cls.lang + str(uuid.uuid4())[:8] + ".wav"
-        file_path = AUDIO_DIR / file_name
-        await generate_audio(sentence, file_path.as_posix(), cls.voice_code)
+        if os.getenv("OSS_ENABLED") == "true":
+            file_path = AUDIO_DIR / file_name
+            await generate_audio(sentence, file_path.as_posix(), cls.voice_code)
+        else:
+            with tempfile.NamedTemporaryFile(suffix=".wav") as f:
+                await generate_audio(sentence, f.name, cls.voice_code)
+                upload_file("lingominer", file_name, f.name)
+
         return file_name
 
     @classmethod

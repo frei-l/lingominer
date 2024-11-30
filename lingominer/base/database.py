@@ -13,7 +13,7 @@ else:
     user = os.environ.get("LINGOMINER_DB_USER")
     password = os.environ.get("LINGOMINER_DB_PASSWORD")
     db_name = os.environ.get("LINGOMINER_DB_NAME")
-    engine = create_engine(f"mysql+mysqldb://{user}:{password}@{host}:{port}/{db_name}", echo=False)
+    engine = create_engine(f"mysql+pymysql://{user}:{password}@{host}:{port}/{db_name}", echo=False)
 
 
 def create_db_and_tables():

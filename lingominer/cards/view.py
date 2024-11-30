@@ -1,10 +1,13 @@
 import uuid
+import os
+import tempfile
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from lingominer.base.deps import get_current_user, get_db_session
+from lingominer.base.oss import download_file
 from lingominer.cards import chroma as vdb
 from lingominer.cards import service as db
 from lingominer.logger import logger
@@ -125,11 +128,16 @@ async def create_a_mochi_card(
         file_name = card.simple_sentence_audio.removeprefix(
             "![simple_sentence]("
         ).removesuffix(")")
-        file_path = AUDIO_DIR / file_name
         url = f"https://app.mochi.cards/api/cards/{card_id}/attachments/{file_name}"
-        with open(file_path, "rb") as audio_file:
-            data = {"file": (file_name, audio_file, "audio/wav")}
-            attachment_response = await client.post(url, files=data, auth=auth)
+        if os.getenv("OSS_ENABLED") == "true":
+            with tempfile.NamedTemporaryFile(suffix=".wav") as f:
+                download_file("lingominer", file_name, f.name)
+                attachment_response = await client.post(url, files=f, auth=auth)
+        else:
+            file_path = AUDIO_DIR / file_name
+            with open(file_path, "rb") as audio_file:
+                data = {"file": (file_name, audio_file, "audio/wav")}
+                attachment_response = await client.post(url, files=data, auth=auth)
 
     if attachment_response.status_code != 200:
         raise HTTPException(
