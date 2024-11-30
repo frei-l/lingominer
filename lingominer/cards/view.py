@@ -132,7 +132,8 @@ async def create_a_mochi_card(
         if os.getenv("OSS_ENABLED") == "true":
             with tempfile.NamedTemporaryFile(suffix=".wav") as f:
                 download_file("lingominer", file_name, f.name)
-                attachment_response = await client.post(url, files=f, auth=auth)
+                data = {"file": (file_name, f, "audio/wav")}
+                attachment_response = await client.post(url, files=data, auth=auth)
         else:
             file_path = AUDIO_DIR / file_name
             with open(file_path, "rb") as audio_file:

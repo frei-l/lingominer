@@ -92,12 +92,12 @@ class BaseLanguage:
         # generate file name with random uuid
         file_name: str = cls.lang + str(uuid.uuid4())[:8] + ".wav"
         if os.getenv("OSS_ENABLED") == "true":
-            file_path = AUDIO_DIR / file_name
-            await generate_audio(sentence, file_path.as_posix(), cls.voice_code)
-        else:
             with tempfile.NamedTemporaryFile(suffix=".wav") as f:
                 await generate_audio(sentence, f.name, cls.voice_code)
                 upload_file("lingominer", file_name, f.name)
+        else:
+            file_path = AUDIO_DIR / file_name
+            await generate_audio(sentence, file_path.as_posix(), cls.voice_code)
 
         return file_name
 
