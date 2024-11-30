@@ -13,7 +13,7 @@ if __name__ == "__main__":
     logger.info("Starting server")
     uvicorn.run(
         "lingominer.api:app",
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=7875,
         reload=True,
         log_config=LOGGING_CONFIG,
