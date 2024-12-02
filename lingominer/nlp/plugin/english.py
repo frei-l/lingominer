@@ -12,7 +12,7 @@ class English(BaseLanguage, lang="en"):
         return 1
 
     @classmethod
-    @observe()
+    @observe(name="English note")
     async def generate(cls, bs: BrowserSelection) -> CardBase:
         langfuse_context.update_current_observation(name="English card generation")
         basic_info = await cls.preprocess(bs.text, bs.start, bs.end)

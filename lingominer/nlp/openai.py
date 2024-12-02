@@ -1,5 +1,6 @@
 from langfuse.openai import openai
 from langfuse.model import ChatPromptClient
+from lingominer.nlp.langfuse import observe, langfuse_context
 import json
 import os
 
@@ -9,6 +10,7 @@ client = openai.AsyncOpenAI(
 )
 
 
+@observe(name="LLM call")
 async def llm_call(prompt: ChatPromptClient, **kwargs):
     message = prompt.compile(**kwargs)
     config = prompt.config
@@ -21,7 +23,11 @@ async def llm_call(prompt: ChatPromptClient, **kwargs):
         messages=[{"role": "system", "content": message}],
         langfuse_prompt=prompt,
         name=prompt.name,
-        **config
+        **config,
+    )
+    langfuse_context.update_current_observation(
+        input=kwargs,
+        output=response.choices[0].message.content,
     )
     if config.get("response_format"):
         return json.loads(response.choices[0].message.content)
