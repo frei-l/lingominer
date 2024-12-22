@@ -1,7 +1,8 @@
-from lingominer.nlp.language import BaseLanguage
+import asyncio
 from lingominer.logger import logger
+from lingominer.nlp.langfuse import langfuse_context, observe
+from lingominer.nlp.language import BaseLanguage
 from lingominer.schemas import BrowserSelection, CardBase, CardType
-from lingominer.nlp.langfuse import langfuse, langfuse_context, observe
 
 
 class English(BaseLanguage, lang="en"):
@@ -18,7 +19,7 @@ class English(BaseLanguage, lang="en"):
         basic_info = await cls.preprocess(bs.text, bs.start, bs.end)
 
         selection = bs.text[bs.start : bs.end]
-        word = basic_info["word"]
+        word = basic_info["target_word"]
         sentence = basic_info["sentence"]
         expression = basic_info["expression"]
         lemma = None
