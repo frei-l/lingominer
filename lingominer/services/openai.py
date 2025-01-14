@@ -1,6 +1,6 @@
 from langfuse.openai import openai
 from langfuse.model import ChatPromptClient
-from lingominer.nlp.langfuse import observe, langfuse_context
+from lingominer.ai.langfuse import observe, langfuse_context
 import json
 import os
 

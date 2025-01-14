@@ -3,8 +3,8 @@ import os
 import uuid
 
 from lingominer.global_env import CHROMA_DIR
-from lingominer.base.context_var import user_id_var
-from lingominer.schemas import Card
+from lingominer.context import user_id_var
+from lingominer.models import Card
 import chromadb.utils.embedding_functions as embedding_functions
 
 client = chromadb.PersistentClient(path=CHROMA_DIR.as_posix())
