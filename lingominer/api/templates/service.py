@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 
 from lingominer.api.templates.schema import GenerationCreate, TemplateCreate
 from lingominer.logger import logger
-from lingominer.models.card import CARD_DEFAULT_FIELDS
+from lingominer.config import CARD_DEFAULT_FIELDS
 from lingominer.models.template import Generation, Template, TemplateField
 
 # Template
@@ -65,7 +65,7 @@ def add_generation(
         template_id=template_id,
         method=generation_input.method,
         prompt=generation_input.prompt,
-        inputs=generation_input.inputs,
+        inputs=fields_available,
         outputs=[
             TemplateField(
                 name=output.name,

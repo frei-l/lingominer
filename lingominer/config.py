@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     llm_base_url: str = "https://api.openai.com/v1"
     llm_api_key: str
+    llm_base_model: str = "deepseek-chat"
 
     mysql_host: Optional[str] = None
     mysql_port: Optional[int] = 3306
@@ -24,7 +25,7 @@ class Settings(BaseSettings):
 
 config = Settings()
 
-logger.info(config.model_dump())
+logger.debug(config.model_dump_json(indent=2))
 
 
 PROJECT_DIR = Path(__file__).parent.parent
@@ -35,3 +36,5 @@ DB_DIR = DATABASE_DIR / "lingominer.db"
 
 CHROMA_DIR = DATABASE_DIR / "chroma"
 AUDIO_DIR = DATABASE_DIR / "audio"
+
+CARD_DEFAULT_FIELDS = ["paragraph", "decorated_paragraph"]

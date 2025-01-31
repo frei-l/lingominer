@@ -1,5 +1,10 @@
+from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
+import uuid
+
+from lingominer.models.card import CardStatus
+
 
 class CardCreate(BaseModel):
     paragraph: str
@@ -11,17 +16,22 @@ class CardCreate(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "paragraph": """\nEllen van Langen rollte das Feld von hinten auf, als sie 1992 olympisches Gold über 800 Meter gewann. Es \
-war eine von zwei Goldmedaillen der niederländischen Delegation. Insgesamt holte das Team Oranje in Barce\
-lona 15 Mal Edelmetall. Das reichte für Platz 20 im Medaillenspiegel.""",
-                    "pos_start": 239,
-                    "pos_end": 246,
-                    "url": 'https://www.tagesschau.de/ausland/europa/olympische-spiele-niederlande-100.html',
-                    "lang": 'de'
+                    "paragraph": "In addition to its rings, Saturn has 25 satellites that measure at least 6 miles (10 kilometers) in diameter, and several smaller satellites. The largest of Saturn’s satellites, Titan, has a diameter of about 3,200 miles—larger than the planets Mercury and Pluto. Titan is one of the few satellites in the solar system known to have an atmosphere. Its atmosphere consists largely of nitrogen. Many of Saturn’s satellites have large craters For example, Mimas has a crater that covers about one-third the diameter of the satellite.",
+                    "pos_start": 432,
+                    "pos_end": 439,
                 }
             ]
         }
     }
 
-class CardUpdate(BaseModel):
+
+class CardResponse(BaseModel):
+    id: uuid.UUID
+    paragraph: str
+    pos_start: int
+    pos_end: int
+    url: Optional[str] = None
     content: dict
+    status: CardStatus
+    created_at: datetime
+    modified_at: datetime

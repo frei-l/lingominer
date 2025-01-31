@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from lingominer.api.cards.view import router as cards_router
 from lingominer.api.templates.view import router as templates_router
 from lingominer.database import get_db_session
 from lingominer.logger import logger
@@ -14,6 +15,8 @@ app = FastAPI(
 )
 
 app.include_router(templates_router, prefix="/templates", tags=["templates"])
+app.include_router(cards_router, prefix="/cards", tags=["cards"])
+
 origins = ["*"]
 
 app.add_middleware(

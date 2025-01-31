@@ -1,27 +1,30 @@
 import asyncio
+import os
 import json
-from typing import Any, Callable, Literal, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Optional, Literal
 
+from dotenv import load_dotenv
 from jinja2 import Template
 from openai import AsyncClient
-from pydantic import BaseModel
+import pprint
 
-from lingominer.config import config
-from lingominer.logger import logger
+load_dotenv()
 
 openai_client = AsyncClient(
-    base_url=config.llm_base_url,
-    api_key=config.llm_api_key,
+    base_url=os.getenv("LINGOMINER_LLM_BASE_URL"), api_key=os.getenv("LINGOMINER_LLM_API_KEY")
 )
 
 
-class FieldDefinition(BaseModel):
+@dataclass
+class FieldDefinition:
     name: str
     type: Literal["text", "audio"]
     description: str
 
 
-class Task(BaseModel):
+@dataclass
+class Task:
     name: str
     action: str
     inputs: list[str]
@@ -52,7 +55,6 @@ class State:
 class Context:
     def __init__(self, context: dict = {}):
         self.context: dict[str, State] = {}
-        self.init_keys = set(context.keys())
         for key, value in context.items():
             self.context[key] = State(value)
 
@@ -73,15 +75,6 @@ class Context:
     def keys(self):
         return self.context.keys()
 
-    def dump(self, exclude_init: bool = True):
-        if exclude_init:
-            return {
-                key: state.value
-                for key, state in self.context.items()
-                if key not in self.init_keys
-            }
-        return {key: state.value for key, state in self.context.items()}
-
     def __str__(self):
         return str({key: state.value for key, state in self.context.items()})
 
@@ -91,8 +84,6 @@ class Flow:
         self.context = context
         self.actions: dict[str, Callable] = {}
         self.tasks: list[Task] = []
-        # default actions
-        self.add_action("completion", completion)
 
     def add_action(self, name: str, func: Callable):
         self.actions[name] = func
@@ -111,11 +102,10 @@ class Flow:
         for output in task.outputs:
             self.context.set(output.name, outputs[output.name])
 
-    async def run(self, timeout: int = 30):
-        async with asyncio.timeout(timeout):
-            async with asyncio.TaskGroup() as tg:
-                for task in self.tasks:
-                    tg.create_task(self._execute_task(task))
+    async def run(self):
+        async with asyncio.TaskGroup() as tg:
+            for task in self.tasks:
+                tg.create_task(self._execute_task(task))
         return self.context
 
 
@@ -142,15 +132,12 @@ def render_prompt(prompt: str, inputs: dict, outputs: list[FieldDefinition]) -> 
         f"{output_format}\n\n"
         "# Output"
     )
-    logger.debug(f"Final Prompt: {final_prompt}")
     return final_prompt
 
 
 async def completion(context: Context, task: Task, inputs: dict) -> dict:
-    for init_key in context.init_keys:
-        inputs[init_key] = await context.get(init_key)
     response = await openai_client.chat.completions.create(
-        model=config.llm_base_model,
+        model="deepseek-chat",
         messages=[
             {
                 "role": "system",
@@ -160,7 +147,6 @@ async def completion(context: Context, task: Task, inputs: dict) -> dict:
         response_format={"type": "json_object"},
     )
     dict_result = json.loads(response.choices[0].message.content)
-    logger.debug(f"Completion Result: {response.choices[0].message.content}")
     return dict_result
 
 
@@ -181,3 +167,105 @@ async def completion(context: Context, task: Task, inputs: dict) -> dict:
 #         raise ValueError("scrapeUrl only support one input")
 #     url = list(inputs.values())[0]
 #     pass
+
+
+async def main():
+    context_dict = {
+        "text": "In addition to its rings, Saturn has 25 satellites that measure at least 6 miles (10 kilometers) in diameter, and several smaller satellites. The largest of Saturn’s satellites, Titan, has a diameter of about 3,200 miles—larger than the planets Mercury and Pluto. Titan is one of the few satellites in the solar system known to have an atmosphere. Its atmosphere consists largely of nitrogen. Many of Saturn’s satellites have large **craters**. For example, Mimas has a crater that covers about one-third the diameter of the satellite.",
+    }
+    g1 = Task(
+        name="extract_target",
+        action="completion",
+        inputs=["text"],
+        outputs=[
+            FieldDefinition(
+                name="word",
+                type="text",
+                description="The target word to be extracted",
+            ),
+            FieldDefinition(
+                name="sentence",
+                type="text",
+                description="The sentence containing the target word",
+            ),
+        ],
+        prompt=(
+            "Giving a paragraph, extract the target word and the sentence. "
+            "the target word is highlighted with **, the sentence is the sentence containing the target word."
+            "the text is: '{{text}}'"
+        ),
+    )
+    g2 = Task(
+        name="extract_lemma",
+        action="completion",
+        inputs=["word"],
+        outputs=[
+            FieldDefinition(
+                name="lemma", type="text", description="The lemma of the word"
+            )
+        ],
+        prompt="Extract the lemma of the word. The lemma is the base form of the word. The word is: '{{word}}'",
+    )
+    g3 = Task(
+        name="explain_word",
+        action="completion",
+        inputs=["lemma", "sentence"],
+        outputs=[
+            FieldDefinition(
+                name="pronunciation",
+                type="text",
+                description="The pronunciation of the word",
+            ),
+            FieldDefinition(
+                name="explanation",
+                type="text",
+                description="The explanation of the word",
+            ),
+        ],
+        prompt=(
+            "Explain the word in the sentence. tell me the pronunciation and the explanation of the word. "
+            "the word is: '{{word}}' "
+            "the sentence is: '{{sentence}}'"
+        ),
+    )
+    g4 = Task(
+        name="summarize",
+        action="completion",
+        inputs=["text"],
+        outputs=[
+            FieldDefinition(
+                name="summary",
+                type="text",
+                description="The summary of the text",
+            )
+        ],
+        prompt="Summarize the text. The text is: '{{text}}'",
+    )
+    g5 = Task(
+        name="simplify",
+        action="completion",
+        inputs=["sentence"],
+        outputs=[
+            FieldDefinition(
+                name="simple_sentence",
+                type="text",
+                description="The simplified sentence",
+            )
+        ],
+        prompt="Simplify the sentence. The sentence is: '{{sentence}}'",
+    )
+
+    context = Context(context_dict)
+    flow = Flow(context)
+    flow.add_action("completion", completion)
+    flow.add_task(g1)
+    flow.add_task(g2)
+    flow.add_task(g3)
+    flow.add_task(g4)
+    flow.add_task(g5)
+    result = await flow.run()
+    pprint.pprint(result.context)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

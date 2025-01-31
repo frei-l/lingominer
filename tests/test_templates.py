@@ -46,3 +46,83 @@ def test_template_crud(client: TestClient):
     # Verify deletion
     response = client.get(f"/templates/{created['id']}")
     assert response.status_code == 404
+
+
+def test_generation_crud(client: TestClient):
+    # First create a template
+    template_data = {
+        "name": "Test Template",
+        "lang": TemplateLang.EN,
+    }
+    response = client.post("/templates", json=template_data)
+    template = response.json()
+
+    # Test generation creation
+    generation_data = {
+        "name": "Test Generation",
+        "method": "completion",
+        "prompt": "This is a test prompt",
+        "inputs": ["paragraph", "pos_start", "pos_end"],
+        "outputs": [
+            {
+                "name": "output1",
+                "type": "text",
+                "description": "First output"
+            },
+            {
+                "name": "output2",
+                "type": "text",
+                "description": "Second output"
+            }
+        ]
+    }
+    response = client.post(f"/templates/{template['id']}/generations", json=generation_data)
+    assert response.status_code == 200
+    created = response.json()
+    assert created["name"] == generation_data["name"]
+    assert created["method"] == generation_data["method"]
+    assert created["prompt"] == generation_data["prompt"]
+    assert "id" in created
+
+    # Test getting single generation
+    response = client.get(f"/templates/{template['id']}/generations/{created['id']}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == created["id"]
+    assert data["name"] == created["name"]
+    assert data["template_id"] == template["id"]
+    assert len(data["inputs"]) == 0  # Initially empty as fields need to be created first
+    assert len(data["outputs"]) == 2
+
+    # Test generation deletion
+    response = client.delete(f"/templates/{template['id']}/generations/{created['id']}")
+    assert response.status_code == 200
+
+    # Verify deletion
+    response = client.get(f"/templates/{template['id']}/generations/{created['id']}")
+    assert response.status_code == 404
+
+
+def test_generation_validation(client: TestClient):
+    # Create a template first
+    template_data = {
+        "name": "Test Template",
+        "lang": TemplateLang.EN,
+    }
+    response = client.post("/templates", json=template_data)
+    template = response.json()
+
+    # Test generation creation without prompt for completion method
+    invalid_generation_data = {
+        "name": "Test Generation",
+        "method": "completion",
+        "inputs": ["input1"],
+        "outputs": [
+            {
+                "name": "output1",
+                "type": "text"
+            }
+        ]
+    }
+    response = client.post(f"/templates/{template['id']}/generations", json=invalid_generation_data)
+    assert response.status_code == 422  # Validation error

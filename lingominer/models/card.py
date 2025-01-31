@@ -5,9 +5,6 @@ from typing import Optional
 
 from sqlmodel import JSON, Field, SQLModel
 
-CARD_DEFAULT_FIELDS = ["paragraph", "pos_start", "pos_end", "url"]
-
-
 class CardStatus(str, Enum):
     NEW = "new"
     LEARNING = "learning"

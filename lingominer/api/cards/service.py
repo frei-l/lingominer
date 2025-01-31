@@ -3,7 +3,7 @@ import uuid
 from sqlmodel import Session, select
 
 from lingominer.models.card import Card
-from lingominer.api.cards.schema import CardCreate, CardUpdate
+from lingominer.api.cards.schema import CardCreate
 
 
 def create(
@@ -35,11 +35,3 @@ def delete(db_session: Session, card_id: uuid.UUID):
     card = db_session.exec(stmt).first()
     db_session.delete(card)
     db_session.commit()
-
-def update(db_session: Session, card_id: uuid.UUID, card_update: CardUpdate):
-    stmt = select(Card).where(Card.id == card_id)
-    card = db_session.exec(stmt).first()
-    card.update(card_update.model_dump())
-    db_session.commit()
-    db_session.refresh(card)
-    return card
