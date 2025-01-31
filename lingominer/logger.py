@@ -30,52 +30,27 @@ LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "default": {
+        "colored": {
             "()": ColorFormatter,
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        },
-        "access": {
-            "()": ColorFormatter,
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        },
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        }
     },
     "handlers": {
-        "default": {
-            "formatter": "default",
+        "console": {
             "class": "logging.StreamHandler",
-            "stream": "ext://sys.stderr",
-        },
-        "access": {
-            "formatter": "access",
-            "class": "logging.StreamHandler",
+            "formatter": "colored",
             "stream": "ext://sys.stdout",
-        },
+        }
     },
     "loggers": {
-        "": {  # root logger
-            "level": "INFO",
-            "handlers": ["default"],
+        "": {
+            "level": "DEBUG",
+            "handlers": ["console"],
             "propagate": False,
         },
-        "lingominer": {
-            "level": "INFO",
-            "handlers": ["default"],
-            "propagate": False,
-        },
-        "uvicorn.error": {
-            "level": "INFO",
-            "handlers": ["default"],
-            "propagate": False,
-        },
-        "uvicorn.access": {
-            "level": "INFO",
-            "handlers": ["access"],
-            "propagate": False,
-        },
-        "sqlalchemy.engine.Engine": {
-            "level": "ERROR",
-            "propagate": False,
-        },
+        "uvicorn.error": {"level": "INFO"},
+        "sqlalchemy": {"level": "WARNING"},
     },
 }
 

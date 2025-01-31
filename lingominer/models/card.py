@@ -1,8 +1,11 @@
+import uuid
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
-from sqlmodel import SQLModel, Field, JSON
-from datetime import datetime, timezone
-import uuid
+
+from sqlmodel import JSON, Field, SQLModel
+
+CARD_DEFAULT_FIELDS = ["paragraph", "pos_start", "pos_end", "url"]
 
 
 class CardStatus(str, Enum):

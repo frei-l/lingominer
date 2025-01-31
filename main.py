@@ -12,5 +12,4 @@ if __name__ == "__main__":
         port=7875,
         reload=True,
         log_config=LOGGING_CONFIG,
-        log_level=logging.INFO,
     )

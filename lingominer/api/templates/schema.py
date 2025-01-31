@@ -1,6 +1,8 @@
-from typing import Optional
-from pydantic import BaseModel, model_validator
+import uuid
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, model_validator
 
 
 class FieldType(str, Enum):
@@ -19,7 +21,26 @@ class TemplateFieldCreate(BaseModel):
     description: Optional[str] = None
 
 
+class TemplateResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    lang: str
+
+
+class TemplateDetailResponse(TemplateResponse):
+    fields: list["TemplateFieldResponse"]
+    generations: list["GenerationResponse"]
+
+
+class TemplateFieldResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    type: FieldType
+    description: Optional[str] = None
+
+
 class GenerationCreate(BaseModel):
+    name: str
     method: str
     prompt: Optional[str] = None
     inputs: list[str]
@@ -30,3 +51,16 @@ class GenerationCreate(BaseModel):
         if self.method == "completion" and self.prompt is None:
             raise ValueError("Prompt is required for completion method")
         return self
+
+
+class GenerationResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    method: str
+    prompt: Optional[str] = None
+
+
+class GenerationDetailResponse(GenerationResponse):
+    template_id: uuid.UUID
+    inputs: list[TemplateFieldResponse]
+    outputs: list[TemplateFieldResponse]

@@ -1,59 +1,93 @@
 import uuid
-from lingominer.api.templates.service import (
-    get_template,
-    create_template,
-    delete_template,
-    add_generation,
-    delete_generation,
-    get_generation,
-)
-from lingominer.api.templates.schema import (
-    TemplateCreate,
-    GenerationCreate,
-)
-from lingominer.models.template import Template, Generation
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
+from lingominer.api.templates import service as db
+from lingominer.api.templates.schema import (
+    GenerationCreate,
+    GenerationDetailResponse,
+    TemplateCreate,
+    TemplateDetailResponse,
+    TemplateResponse,
+)
+from lingominer.database import get_db_session
+from lingominer.models.template import Generation
 
 router = APIRouter()
 
 # Template
 
-@router.post("/templates", response_model=Template)
-async def create_template_view(db_session: Session, template_create: TemplateCreate):
-    template = create_template(db_session, template_create)
+
+@router.post("", response_model=TemplateDetailResponse)
+async def create_template_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_create: TemplateCreate,
+):
+    template = db.create_template(db_session, template_create)
     return template
 
-@router.get("/templates", response_model=list[Template])
-async def get_templates(db_session: Session):
-    templates = get_templates(db_session)
+
+@router.get("", response_model=list[TemplateResponse])
+async def get_templates(
+    db_session: Annotated[Session, Depends(get_db_session)],
+):
+    templates = db.get_templates(db_session)
     return templates
 
-@router.get("/templates/{template_id}", response_model=Template)
-async def get_template_view(db_session: Session, template_id: uuid.UUID):
-    template = get_template(db_session, template_id)
+
+@router.get("/{template_id}", response_model=TemplateDetailResponse)
+async def get_template_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+):
+    template = db.get_template(db_session, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
     return template
 
-@router.delete("/templates/{template_id}")
-async def delete_template_view(db_session: Session, template_id: uuid.UUID):
-    delete_template(db_session, template_id)
-    
+
+@router.delete("/{template_id}")
+async def delete_template_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+):
+    db.delete_template(db_session, template_id)
+
 
 # Generation
 
 
-@router.post("/templates/{template_id}/generations", response_model=Generation)
+@router.post("/{template_id}/generations", response_model=Generation)
 async def create_generation_view(
-    db_session: Session, template_id: uuid.UUID, generation_create: GenerationCreate
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+    generation_create: GenerationCreate,
 ):
-    generation = add_generation(db_session, template_id, generation_create)
+    generation = db.add_generation(db_session, template_id, generation_create)
     return generation
 
-@router.get("/templates/{template_id}/generations/{generation_id}", response_model=Generation)
-async def get_generation_view(db_session: Session, template_id: uuid.UUID, generation_id: uuid.UUID):
-    generation = get_generation(db_session, generation_id, template_id)
+
+@router.get(
+    "/{template_id}/generations/{generation_id}",
+    response_model=GenerationDetailResponse,
+)
+async def get_generation_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+    generation_id: uuid.UUID,
+):
+    generation = db.get_generation(db_session, generation_id, template_id)
+    if not generation:
+        raise HTTPException(status_code=404, detail="Generation not found")
     return generation
 
-@router.delete("/templates/{template_id}/generations/{generation_id}")
-async def delete_generation_view(db_session: Session, template_id: uuid.UUID, generation_id: uuid.UUID):
-    delete_generation(db_session, template_id, generation_id)
+
+@router.delete("/{template_id}/generations/{generation_id}")
+async def delete_generation_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+    generation_id: uuid.UUID,
+):
+    db.delete_generation(db_session, template_id, generation_id)
