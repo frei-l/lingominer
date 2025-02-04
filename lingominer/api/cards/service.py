@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from sqlmodel import Session, select
 
@@ -18,8 +19,11 @@ def create(
     return card_from_template
 
 
-def get(db_session: Session, template_id: uuid.UUID):
-    stmt = select(Card).where(Card.template_id == template_id)
+def get(db_session: Session, template_id: Optional[uuid.UUID]):
+    if template_id:
+        stmt = select(Card).where(Card.template_id == template_id)
+    else:
+        stmt = select(Card)
     cards = db_session.exec(stmt).all()
     return cards
 

@@ -37,6 +37,7 @@ class TemplateFieldResponse(BaseModel):
     name: str
     type: FieldType
     description: Optional[str] = None
+    source_id: uuid.UUID
 
 
 class GenerationCreate(BaseModel):

@@ -1,5 +1,5 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
@@ -16,7 +16,8 @@ router = APIRouter()
 
 @router.get("", response_model=list[Card])
 async def get_cards(
-    db_session: Annotated[Session, Depends(get_db_session)], template_id: uuid.UUID
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: Optional[uuid.UUID] = None,
 ):
     cards = db.get(db_session, template_id)
     return cards

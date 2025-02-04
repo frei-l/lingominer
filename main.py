@@ -9,7 +9,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "lingominer.app:app",
         host="0.0.0.0",
-        port=7875,
         reload=True,
         log_config=LOGGING_CONFIG,
     )
