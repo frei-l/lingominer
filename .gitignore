@@ -16,3 +16,6 @@ database/
 # testing
 test/
 
+.vscode/settings.json
+
+notebooks/
