@@ -1,5 +1,3 @@
-import logging
-
 import uvicorn
 
 from lingominer.logger import LOGGING_CONFIG, logger

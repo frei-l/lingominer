@@ -11,9 +11,14 @@ from lingominer.api.templates.schema import (
     TemplateCreate,
     TemplateDetailResponse,
     TemplateResponse,
+    GenerationUpdate,
+    TemplateFieldCreate,
+    TemplateFieldResponse,
+    TemplateFieldUpdate,
 )
 from lingominer.database import get_db_session
 from lingominer.models.template import Generation
+from lingominer.exception import ResourceConflict
 
 router = APIRouter()
 
@@ -53,7 +58,10 @@ async def delete_template_view(
     db_session: Annotated[Session, Depends(get_db_session)],
     template_id: uuid.UUID,
 ):
-    db.delete_template(db_session, template_id)
+    try:
+        db.delete_template(db_session, template_id)
+    except ResourceConflict as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 # Generation
@@ -84,6 +92,24 @@ async def get_generation_view(
     return generation
 
 
+@router.patch(
+    "/{template_id}/generations/{generation_id}",
+    response_model=GenerationDetailResponse,
+)
+async def patch_generation_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+    generation_id: uuid.UUID,
+    generation_update: GenerationUpdate,
+):
+    generation = db.update_generation(
+        db_session, generation_id, template_id, generation_update
+    )
+    if not generation:
+        raise HTTPException(status_code=404, detail="Generation not found")
+    return generation
+
+
 @router.delete("/{template_id}/generations/{generation_id}")
 async def delete_generation_view(
     db_session: Annotated[Session, Depends(get_db_session)],
@@ -91,3 +117,42 @@ async def delete_generation_view(
     generation_id: uuid.UUID,
 ):
     db.delete_generation(db_session, template_id, generation_id)
+
+
+# Template Fields
+
+
+@router.post("/{template_id}/fields", response_model=TemplateFieldResponse)
+async def create_template_field_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+    field_create: TemplateFieldCreate,
+):
+    field = db.create_template_field(db_session, template_id, field_create)
+    if not field:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return field
+
+
+@router.patch("/{template_id}/fields/{field_id}", response_model=TemplateFieldResponse)
+async def update_template_field_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+    field_id: uuid.UUID,
+    field_update: TemplateFieldUpdate,
+):
+    field = db.update_template_field(db_session, template_id, field_id, field_update)
+    if not field:
+        raise HTTPException(status_code=404, detail="Field not found")
+    return field
+
+
+@router.delete("/{template_id}/fields/{field_id}")
+async def delete_template_field_view(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    template_id: uuid.UUID,
+    field_id: uuid.UUID,
+):
+    success = db.delete_template_field(db_session, template_id, field_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Field not found or in use")

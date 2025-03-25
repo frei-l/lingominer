@@ -42,7 +42,7 @@ def test_template_crud(client: TestClient):
     # Test template deletion
     response = client.delete(f"/templates/{created['id']}")
     assert response.status_code == 200
-    
+
     # Verify deletion
     response = client.get(f"/templates/{created['id']}")
     assert response.status_code == 404
@@ -62,45 +62,106 @@ def test_generation_crud(client: TestClient):
         "name": "Test Generation",
         "method": "completion",
         "prompt": "This is a test prompt",
-        "inputs": ["paragraph", "pos_start", "pos_end"],
-        "outputs": [
-            {
-                "name": "output1",
-                "type": "text",
-                "description": "First output"
-            },
-            {
-                "name": "output2",
-                "type": "text",
-                "description": "Second output"
-            }
-        ]
+        "inputs": [],
     }
-    response = client.post(f"/templates/{template['id']}/generations", json=generation_data)
+    response = client.post(
+        f"/templates/{template['id']}/generations", json=generation_data
+    )
     assert response.status_code == 200
-    created = response.json()
-    assert created["name"] == generation_data["name"]
-    assert created["method"] == generation_data["method"]
-    assert created["prompt"] == generation_data["prompt"]
-    assert "id" in created
+    created_generation = response.json()
+    assert created_generation["name"] == generation_data["name"]
+    assert created_generation["method"] == generation_data["method"]
+    assert created_generation["prompt"] == generation_data["prompt"]
+    assert "id" in created_generation
 
-    # Test getting single generation
-    response = client.get(f"/templates/{template['id']}/generations/{created['id']}")
+    # Create output fields for the generation
+    output_field_data1 = {
+        "name": "output1",
+        "type": "text",
+        "description": "First output",
+        "generation_id": created_generation["id"],
+    }
+    response = client.post(
+        f"/templates/{template['id']}/fields", json=output_field_data1
+    )
+    assert response.status_code == 200
+    output1 = response.json()
+
+    output_field_data2 = {
+        "name": "output2",
+        "type": "text",
+        "description": "Second output",
+        "generation_id": created_generation["id"],
+    }
+    response = client.post(
+        f"/templates/{template['id']}/fields", json=output_field_data2
+    )
+    assert response.status_code == 200
+    output2 = response.json()
+
+    # Test getting single generation and verify fields
+    response = client.get(
+        f"/templates/{template['id']}/generations/{created_generation['id']}"
+    )
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == created["id"]
-    assert data["name"] == created["name"]
+    assert data["id"] == created_generation["id"]
+    assert data["name"] == created_generation["name"]
     assert data["template_id"] == template["id"]
-    assert len(data["inputs"]) == 0  # Initially empty as fields need to be created first
+    assert len(data["inputs"]) == 0
     assert len(data["outputs"]) == 2
+    output_ids = {output["id"] for output in data["outputs"]}
+    assert output1["id"] in output_ids
+    assert output2["id"] in output_ids
+
+    # Test updating generation
+    update_data = {"name": "Updated Generation", "prompt": "Updated prompt"}
+    response = client.patch(
+        f"/templates/{template['id']}/generations/{created_generation['id']}",
+        json=update_data,
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["name"] == update_data["name"]
+    assert updated["prompt"] == update_data["prompt"]
+
+    # Test updating output field
+    field_update = {"description": "Updated output description"}
+    response = client.patch(
+        f"/templates/{template['id']}/fields/{output1['id']}", json=field_update
+    )
+    assert response.status_code == 200
+    updated_field = response.json()
+    assert updated_field["description"] == field_update["description"]
+
+    # Verify field update through generation details
+    response = client.get(
+        f"/templates/{template['id']}/generations/{created_generation['id']}"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    updated_outputs = {output["id"]: output for output in data["outputs"]}
+    assert updated_outputs[output1["id"]]["description"] == field_update["description"]
 
     # Test generation deletion
-    response = client.delete(f"/templates/{template['id']}/generations/{created['id']}")
+    response = client.delete(
+        f"/templates/{template['id']}/generations/{created_generation['id']}"
+    )
     assert response.status_code == 200
 
     # Verify deletion
-    response = client.get(f"/templates/{template['id']}/generations/{created['id']}")
+    response = client.get(
+        f"/templates/{template['id']}/generations/{created_generation['id']}"
+    )
     assert response.status_code == 404
+
+    # Verify fields are deleted by checking generation details
+    response = client.get(f"/templates/{template['id']}")
+    assert response.status_code == 200
+    template_data = response.json()
+    field_ids = {field["id"] for field in template_data["fields"]}
+    assert output1["id"] not in field_ids
+    assert output2["id"] not in field_ids
 
 
 def test_generation_validation(client: TestClient):
@@ -117,12 +178,9 @@ def test_generation_validation(client: TestClient):
         "name": "Test Generation",
         "method": "completion",
         "inputs": ["input1"],
-        "outputs": [
-            {
-                "name": "output1",
-                "type": "text"
-            }
-        ]
+        "outputs": [{"name": "output1", "type": "text"}],
     }
-    response = client.post(f"/templates/{template['id']}/generations", json=invalid_generation_data)
+    response = client.post(
+        f"/templates/{template['id']}/generations", json=invalid_generation_data
+    )
     assert response.status_code == 422  # Validation error

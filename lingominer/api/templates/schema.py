@@ -2,7 +2,10 @@ import uuid
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
+
+
+## Template Field
 
 
 class FieldType(str, Enum):
@@ -10,26 +13,16 @@ class FieldType(str, Enum):
     AUDIO = "audio"
 
 
-class TemplateCreate(BaseModel):
-    name: str
-    lang: str
-
-
 class TemplateFieldCreate(BaseModel):
     name: str
     type: FieldType
     description: Optional[str] = None
+    generation_id: Optional[uuid.UUID] = None
 
 
-class TemplateResponse(BaseModel):
-    id: uuid.UUID
-    name: str
-    lang: str
-
-
-class TemplateDetailResponse(TemplateResponse):
-    fields: list["TemplateFieldResponse"]
-    generations: list["GenerationResponse"]
+class TemplateFieldUpdate(BaseModel):
+    description: Optional[str] = None
+    type: Optional[FieldType] = None
 
 
 class TemplateFieldResponse(BaseModel):
@@ -40,18 +33,21 @@ class TemplateFieldResponse(BaseModel):
     source_id: uuid.UUID
 
 
+## Generation
+
+
 class GenerationCreate(BaseModel):
     name: str
     method: str
     prompt: Optional[str] = None
     inputs: list[str]
-    outputs: list[TemplateFieldCreate]
 
-    @model_validator(mode="after")
-    def validate_prompt(self):
-        if self.method == "completion" and self.prompt is None:
-            raise ValueError("Prompt is required for completion method")
-        return self
+
+class GenerationUpdate(BaseModel):
+    name: Optional[str] = None
+    method: Optional[str] = None
+    prompt: Optional[str] = None
+    inputs: Optional[list[str]] = None
 
 
 class GenerationResponse(BaseModel):
@@ -65,3 +61,22 @@ class GenerationDetailResponse(GenerationResponse):
     template_id: uuid.UUID
     inputs: list[TemplateFieldResponse]
     outputs: list[TemplateFieldResponse]
+
+
+## Template
+
+
+class TemplateCreate(BaseModel):
+    name: str
+    lang: str
+
+
+class TemplateResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    lang: str
+
+
+class TemplateDetailResponse(TemplateResponse):
+    fields: list[TemplateFieldResponse]
+    generations: list[GenerationResponse]
