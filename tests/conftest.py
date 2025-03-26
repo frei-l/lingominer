@@ -9,5 +9,5 @@ from lingominer.config import config
 
 @pytest.fixture(scope="module")
 def client() -> Generator[TestClient, None, None]:
-    with TestClient(app, headers={"Authorization": f"Bearer {config.auth_key}"}) as c:
+    with TestClient(app, headers={"Authorization": "Bearer test"}) as c:
         yield c

@@ -1,4 +1,3 @@
-import uuid
 from enum import Enum
 from typing import Optional
 
@@ -17,7 +16,7 @@ class TemplateFieldCreate(BaseModel):
     name: str
     type: FieldType
     description: Optional[str] = None
-    generation_id: Optional[uuid.UUID] = None
+    generation_id: Optional[str] = None
 
 
 class TemplateFieldUpdate(BaseModel):
@@ -26,11 +25,11 @@ class TemplateFieldUpdate(BaseModel):
 
 
 class TemplateFieldResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     name: str
     type: FieldType
     description: Optional[str] = None
-    source_id: uuid.UUID
+    source_id: str
 
 
 ## Generation
@@ -51,14 +50,14 @@ class GenerationUpdate(BaseModel):
 
 
 class GenerationResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     name: str
     method: str
     prompt: Optional[str] = None
 
 
 class GenerationDetailResponse(GenerationResponse):
-    template_id: uuid.UUID
+    template_id: str
     inputs: list[TemplateFieldResponse]
     outputs: list[TemplateFieldResponse]
 
@@ -72,7 +71,7 @@ class TemplateCreate(BaseModel):
 
 
 class TemplateResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     name: str
     lang: str
 

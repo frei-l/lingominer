@@ -5,6 +5,7 @@ from typing import Optional
 
 from sqlmodel import JSON, Field, SQLModel
 
+
 class CardStatus(str, Enum):
     NEW = "new"
     LEARNING = "learning"
@@ -20,10 +21,14 @@ class CardBase(SQLModel):
 
 
 class Card(CardBase, table=True):
-    id: uuid.UUID = Field(primary_key=True, default_factory=uuid.uuid4)
+    id: str = Field(
+        primary_key=True,
+        default_factory=lambda: "card_" + uuid.uuid4().hex,
+    )
+    user_id: str = Field(description="user id", foreign_key="user.id")
     status: CardStatus = Field(default=CardStatus.NEW)
 
-    template_id: uuid.UUID = Field(
+    template_id: str = Field(
         description="id of the template", foreign_key="template.id"
     )
 

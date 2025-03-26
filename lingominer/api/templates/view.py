@@ -1,4 +1,3 @@
-import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,8 +18,9 @@ from lingominer.api.templates.schema import (
 from lingominer.database import get_db_session
 from lingominer.models.template import Generation
 from lingominer.exception import ResourceConflict
+from lingominer.api.auth.security import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Template
 
@@ -45,7 +45,7 @@ async def get_templates(
 @router.get("/{template_id}", response_model=TemplateDetailResponse)
 async def get_template_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
+    template_id: str,
 ):
     template = db.get_template(db_session, template_id)
     if not template:
@@ -56,7 +56,7 @@ async def get_template_view(
 @router.delete("/{template_id}")
 async def delete_template_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
+    template_id: str,
 ):
     try:
         db.delete_template(db_session, template_id)
@@ -70,7 +70,7 @@ async def delete_template_view(
 @router.post("/{template_id}/generations", response_model=Generation)
 async def create_generation_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
+    template_id: str,
     generation_create: GenerationCreate,
 ):
     generation = db.add_generation(db_session, template_id, generation_create)
@@ -83,8 +83,8 @@ async def create_generation_view(
 )
 async def get_generation_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
-    generation_id: uuid.UUID,
+    template_id: str,
+    generation_id: str,
 ):
     generation = db.get_generation(db_session, generation_id, template_id)
     if not generation:
@@ -98,8 +98,8 @@ async def get_generation_view(
 )
 async def patch_generation_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
-    generation_id: uuid.UUID,
+    template_id: str,
+    generation_id: str,
     generation_update: GenerationUpdate,
 ):
     generation = db.update_generation(
@@ -113,8 +113,8 @@ async def patch_generation_view(
 @router.delete("/{template_id}/generations/{generation_id}")
 async def delete_generation_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
-    generation_id: uuid.UUID,
+    template_id: str,
+    generation_id: str,
 ):
     db.delete_generation(db_session, template_id, generation_id)
 
@@ -125,7 +125,7 @@ async def delete_generation_view(
 @router.post("/{template_id}/fields", response_model=TemplateFieldResponse)
 async def create_template_field_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
+    template_id: str,
     field_create: TemplateFieldCreate,
 ):
     field = db.create_template_field(db_session, template_id, field_create)
@@ -137,8 +137,8 @@ async def create_template_field_view(
 @router.patch("/{template_id}/fields/{field_id}", response_model=TemplateFieldResponse)
 async def update_template_field_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
-    field_id: uuid.UUID,
+    template_id: str,
+    field_id: str,
     field_update: TemplateFieldUpdate,
 ):
     field = db.update_template_field(db_session, template_id, field_id, field_update)
@@ -150,8 +150,8 @@ async def update_template_field_view(
 @router.delete("/{template_id}/fields/{field_id}")
 async def delete_template_field_view(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: uuid.UUID,
-    field_id: uuid.UUID,
+    template_id: str,
+    field_id: str,
 ):
     success = db.delete_template_field(db_session, template_id, field_id)
     if not success:

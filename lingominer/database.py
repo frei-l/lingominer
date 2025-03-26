@@ -1,7 +1,7 @@
 from sqlmodel import Session, SQLModel, create_engine
-from lingominer.models import *
 from lingominer.logger import logger
 from lingominer.config import config, DB_DIR
+import lingominer.models as models
 
 
 def init_sqlite_engine():
@@ -9,6 +9,15 @@ def init_sqlite_engine():
         logger.info(f"Creating sqlite database at {DB_DIR.as_posix()}")
         engine = create_engine(f"sqlite:///{DB_DIR.as_posix()}", echo=False)
         SQLModel.metadata.create_all(engine)
+        with Session(engine) as session:
+            session.add(
+                models.User(
+                    id="test",
+                    name="test",
+                    api_keys=[models.ApiKey(id="test", key="test")],
+                )
+            )
+            session.commit()
     else:
         engine = create_engine(f"sqlite:///{DB_DIR.as_posix()}", echo=False)
 
@@ -28,7 +37,9 @@ def init_mysql_engine():
         db_exists = result.fetchone() is not None
 
         if not db_exists:
-            logger.info(f"Creating mysql database {config.mysql_db} at {config.mysql_host}:{config.mysql_port}")
+            logger.info(
+                f"Creating mysql database {config.mysql_db} at {config.mysql_host}:{config.mysql_port}"
+            )
             conn.execute(f"CREATE DATABASE {config.mysql_db}")
 
     # Create final engine with database

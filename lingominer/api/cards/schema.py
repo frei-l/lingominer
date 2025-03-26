@@ -1,7 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
-import uuid
 
 from lingominer.models.card import CardStatus
 
@@ -26,7 +25,7 @@ class CardCreate(BaseModel):
 
 
 class CardResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     paragraph: str
     pos_start: int
     pos_end: int

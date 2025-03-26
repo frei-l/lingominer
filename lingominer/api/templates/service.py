@@ -1,25 +1,29 @@
-import uuid
 from typing import Optional
 
+from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from lingominer.api.templates.schema import (
     GenerationCreate,
-    TemplateCreate,
     GenerationUpdate,
+    TemplateCreate,
     TemplateFieldCreate,
     TemplateFieldUpdate,
 )
-from lingominer.logger import logger
 from lingominer.config import CARD_DEFAULT_FIELDS
-from lingominer.models.template import Generation, Template, TemplateField
-from lingominer.models.card import Card
+from lingominer.ctx import user_id
 from lingominer.exception import ResourceConflict
+from lingominer.logger import logger
+from lingominer.models.card import Card
+from lingominer.models.template import Generation, Template, TemplateField
+
 # Template
 
 
 def create_template(db_session: Session, template_create: TemplateCreate):
-    template_model = Template(name=template_create.name, lang=template_create.lang)
+    template_model = Template(
+        name=template_create.name, lang=template_create.lang, user_id=user_id.get()
+    )
     db_session.add(template_model)
     db_session.commit()
     db_session.refresh(template_model)
@@ -32,13 +36,13 @@ def get_templates(db_session: Session):
     return templates
 
 
-def get_template(db_session: Session, template_id: uuid.UUID):
+def get_template(db_session: Session, template_id: str):
     stmt = select(Template).where(Template.id == template_id)
     template = db_session.exec(stmt).first()
     return template
 
 
-def delete_template(db_session: Session, template_id: uuid.UUID):
+def delete_template(db_session: Session, template_id: str):
     # Check if template exists
     stmt = select(Template).where(Template.id == template_id)
     template = db_session.exec(stmt).first()
@@ -76,7 +80,7 @@ def delete_template(db_session: Session, template_id: uuid.UUID):
 
 
 def add_generation(
-    db_session: Session, template_id: uuid.UUID, generation_input: GenerationCreate
+    db_session: Session, template_id: str, generation_input: GenerationCreate
 ):
     # validate inputs
     fields_available = db_session.exec(
@@ -89,7 +93,10 @@ def add_generation(
     keys_required = set(generation_input.inputs) - set(CARD_DEFAULT_FIELDS)
     if keys_available != keys_required:
         missing_keys = keys_required - keys_available
-        raise ValueError(f"Some inputs fields are not found: {missing_keys}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Some inputs fields are not found: {missing_keys}",
+        )
 
     # create generation
     generation_model = Generation(
@@ -98,6 +105,7 @@ def add_generation(
         method=generation_input.method,
         prompt=generation_input.prompt,
         inputs=fields_available,
+        user_id=user_id.get(),
     )
     db_session.add(generation_model)
     db_session.commit()
@@ -107,8 +115,8 @@ def add_generation(
 
 def get_generation(
     db_session: Session,
-    generation_id: uuid.UUID,
-    template_id: uuid.UUID,
+    generation_id: str,
+    template_id: str,
 ):
     stmt = select(Generation).where(
         Generation.id == generation_id, Generation.template_id == template_id
@@ -119,8 +127,8 @@ def get_generation(
 
 def update_generation(
     db_session: Session,
-    generation_id: uuid.UUID,
-    template_id: uuid.UUID,
+    generation_id: str,
+    template_id: str,
     generation_update: GenerationUpdate,
 ) -> Optional[Generation]:
     generation = get_generation(db_session, generation_id, template_id)
@@ -138,7 +146,7 @@ def update_generation(
 
 
 def delete_generation(
-    db_session: Session, template_id: uuid.UUID, generation_id: uuid.UUID
+    db_session: Session, template_id: str, generation_id: str
 ) -> None:
     stmt = select(Generation).where(
         Generation.id == generation_id, Generation.template_id == template_id
@@ -162,7 +170,7 @@ def delete_generation(
 
 def create_template_field(
     db_session: Session,
-    template_id: uuid.UUID,
+    template_id: str,
     field_create: TemplateFieldCreate,
 ) -> Optional[TemplateField]:
     field = TemplateField(
@@ -170,6 +178,7 @@ def create_template_field(
         type=field_create.type,
         description=field_create.description,
         template_id=template_id,
+        user_id=user_id.get(),
         source_id=field_create.generation_id,
     )
     db_session.add(field)
@@ -180,8 +189,8 @@ def create_template_field(
 
 def get_template_field(
     db_session: Session,
-    template_id: uuid.UUID,
-    field_id: uuid.UUID,
+    template_id: str,
+    field_id: str,
 ) -> Optional[TemplateField]:
     stmt = select(TemplateField).where(
         TemplateField.id == field_id,
@@ -192,8 +201,8 @@ def get_template_field(
 
 def update_template_field(
     db_session: Session,
-    template_id: uuid.UUID,
-    field_id: uuid.UUID,
+    template_id: str,
+    field_id: str,
     field_update: TemplateFieldUpdate,
 ) -> Optional[TemplateField]:
     field = get_template_field(db_session, template_id, field_id)
@@ -212,8 +221,8 @@ def update_template_field(
 
 def delete_template_field(
     db_session: Session,
-    template_id: uuid.UUID,
-    field_id: uuid.UUID,
+    template_id: str,
+    field_id: str,
 ) -> bool:
     field = get_template_field(db_session, template_id, field_id)
     if not field:

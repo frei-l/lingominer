@@ -1,25 +1,29 @@
-import uuid
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends
-from sqlmodel import Session
+from sqlmodel import Session, select
 
-from lingominer.api.cards import service as db
 from lingominer.api.cards.schema import CardCreate
 from lingominer.api.templates.service import get_template
 from lingominer.flow.algo import Context, Flow, Task, FieldDefinition
 from lingominer.database import get_db_session
 from lingominer.models.card import Card
+from lingominer.api.auth.security import get_current_user
+from lingominer.ctx import user_id
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[Card])
 async def get_cards(
     db_session: Annotated[Session, Depends(get_db_session)],
-    template_id: Optional[uuid.UUID] = None,
+    template_id: Optional[str] = None,
 ):
-    cards = db.get(db_session, template_id)
+    if template_id:
+        stmt = select(Card).where(Card.template_id == template_id)
+    else:
+        stmt = select(Card)
+    cards = db_session.exec(stmt).all()
     return cards
 
 
@@ -27,7 +31,7 @@ async def get_cards(
 async def create_card_view(
     db_session: Annotated[Session, Depends(get_db_session)],
     card_create: CardCreate,
-    template_id: uuid.UUID,
+    template_id: str,
 ):
     template = get_template(db_session, template_id)
     setup_context = Context(
@@ -61,10 +65,14 @@ async def create_card_view(
             )
         )
     result = await flow.run()
-    card = db.create(
-        db_session,
-        card_create=card_create,
+
+    card_from_template = Card(
         template_id=template_id,
-        content=result.dump(exclude_init=True),
+        user_id=user_id.get(),
+        **card_create.model_dump(),
+        content=result.dump(),
     )
-    return card
+    db_session.add(card_from_template)
+    db_session.commit()
+    db_session.refresh(card_from_template)
+    return card_from_template
