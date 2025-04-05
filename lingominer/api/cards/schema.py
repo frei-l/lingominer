@@ -1,6 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 from lingominer.models.card import CardStatus
 
@@ -9,7 +10,16 @@ class CardCreate(BaseModel):
     paragraph: str
     pos_start: int
     pos_end: int
-    url: Optional[str] = None
+
+    template_id: Optional[str] = Field(
+        default=None,
+        description="id of template intended to be used, if not provided, "
+        "the language will be detected and a template will be used accordingly",
+    )
+    url: Optional[str] = Field(
+        default=None,
+        description="url of the page where the sentence is from, if not provided, ",
+    )
 
     model_config = {
         "json_schema_extra": {

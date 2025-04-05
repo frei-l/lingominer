@@ -1,19 +1,19 @@
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 
-from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
+from sqlmodel import Column, Enum, Field, Relationship, SQLModel, UniqueConstraint
 
 
-class FieldType(str, Enum):
+class FieldType(StrEnum):
     TEXT = "text"
     AUDIO = "audio"
 
 
-class TemplateLang(str, Enum):
-    EN = "en"
-    DE = "de"
-    JP = "jp"
+class TemplateLang(StrEnum):
+    en = "en"
+    de = "de"
+    jp = "jp"
 
 
 class Template(SQLModel, table=True):
@@ -23,7 +23,10 @@ class Template(SQLModel, table=True):
     )
     user_id: str = Field(description="user id", foreign_key="user.id")
     name: str = Field(description="name of the template")
-    lang: str = Field(description="language of the template")
+    lang: TemplateLang = Field(
+        description="language of the template",
+        sa_column=Column(Enum(TemplateLang)),
+    )
 
     generations: list["Generation"] = Relationship(back_populates="template")
     fields: list["TemplateField"] = Relationship(back_populates="template")

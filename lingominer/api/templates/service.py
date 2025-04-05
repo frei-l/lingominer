@@ -15,7 +15,7 @@ from lingominer.ctx import user_id
 from lingominer.exception import ResourceConflict
 from lingominer.logger import logger
 from lingominer.models.card import Card
-from lingominer.models.template import Generation, Template, TemplateField
+from lingominer.models.template import Generation, Template, TemplateField, TemplateLang
 
 # Template
 
@@ -41,6 +41,10 @@ def get_template(db_session: Session, template_id: str):
     template = db_session.exec(stmt).first()
     return template
 
+def get_template_by_lang(db_session: Session, lang: TemplateLang):
+    stmt = select(Template).where(Template.lang == lang)
+    template = db_session.exec(stmt).first()
+    return template
 
 def delete_template(db_session: Session, template_id: str):
     # Check if template exists
