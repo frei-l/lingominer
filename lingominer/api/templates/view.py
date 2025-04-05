@@ -3,22 +3,22 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from lingominer.api.auth.security import get_current_user
 from lingominer.api.templates import service as db
 from lingominer.api.templates.schema import (
     GenerationCreate,
     GenerationDetailResponse,
+    GenerationUpdate,
     TemplateCreate,
     TemplateDetailResponse,
-    TemplateResponse,
-    GenerationUpdate,
     TemplateFieldCreate,
     TemplateFieldResponse,
     TemplateFieldUpdate,
+    TemplateResponse,
 )
 from lingominer.database import get_db_session
-from lingominer.models.template import Generation
 from lingominer.exception import ResourceConflict
-from lingominer.api.auth.security import get_current_user
+from lingominer.models.template import Generation
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 

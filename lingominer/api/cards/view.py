@@ -3,13 +3,13 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
+from lingominer.api.auth.security import get_current_user
 from lingominer.api.cards.schema import CardCreate
 from lingominer.api.templates.service import get_template
-from lingominer.flow.algo import Context, Flow, Task, FieldDefinition
-from lingominer.database import get_db_session
-from lingominer.models.card import Card
-from lingominer.api.auth.security import get_current_user
 from lingominer.ctx import user_id
+from lingominer.database import get_db_session
+from lingominer.flow.algo import Context, FieldDefinition, Flow, Task
+from lingominer.models.card import Card
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 

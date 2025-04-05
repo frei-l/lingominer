@@ -1,18 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
+from lingominer.api.auth.security import get_current_user
+from lingominer.api.passages.schemas import (
+    NoteCreate,
+    NoteDetail,
+    PassageDetail,
+    PassageList,
+)
 from lingominer.ctx import user_id
 from lingominer.database import get_db_session
-from lingominer.models.passage import Passage
+from lingominer.models.passage import Note, Passage
 from lingominer.services.ai import openai_client
 from lingominer.services.jina import scrape_url
-from lingominer.api.auth.security import get_current_user
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
-@router.post("", response_model=Passage)
-async def create_passage(url: str, db: Session = Depends(get_db_session)):
+@router.post("", response_model=PassageDetail)
+async def create_passage(url: str, session: Session = Depends(get_db_session)):
     prompt = """
     I will provide you with raw web content enclosed in <original_raw_text> tags. 
     Please transform this content into a well-formatted, reader-friendly text following these specifications:
@@ -62,15 +68,63 @@ async def create_passage(url: str, db: Session = Depends(get_db_session)):
         content=content,
         user_id=user_id.get(),
     )
-    db.add(passage)
-    db.commit()
-    db.refresh(passage)
-    return passage
+    session.add(passage)
+    session.commit()
+    session.refresh(passage)
+    return PassageDetail
 
 
-@router.get("", response_model=list[Passage])
+@router.get("", response_model=list[PassageList])
 async def get_passages(db: Session = Depends(get_db_session)):
     passages = db.exec(
         select(Passage).where(Passage.user_id == user_id.get()).limit(5)
     ).all()
     return passages
+
+
+@router.get("/{passage_id}", response_model=PassageDetail)
+async def get_passage(passage_id: str, session: Session = Depends(get_db_session)):
+    passage = session.exec(
+        select(Passage)
+        .where(Passage.id == passage_id)
+        .where(Passage.user_id == user_id.get())
+    ).first()
+    return passage
+
+
+@router.post("/{passage_id}/notes", response_model=NoteDetail)
+async def create_note(
+    passage_id: str, note_create: NoteCreate, session: Session = Depends(get_db_session)
+):
+    prompt = f"""
+    in the context of the following text, 
+    please explain the meaning of the selected text in a way that is easy to understand.
+    The explanation should be concise and to the point, and should be less then 3 sentences.
+    explain in Chinese.
+    <text>
+    {note_create.context}
+    </text>
+    <selected_text>
+    {note_create.selected_text}
+    </selected_text>
+    """
+
+    response = await openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    note = Note(
+        user_id=user_id.get(),
+        passage_id=passage_id,
+        content=response.choices[0].message.content,
+        selected_text=note_create.selected_text,
+        context=note_create.context,
+        paragraph_index=note_create.paragraph_index,
+        start_index=note_create.start_index,
+        end_index=note_create.end_index,
+    )
+
+    session.add(note)
+    session.commit()
+    session.refresh(note)
+    return note

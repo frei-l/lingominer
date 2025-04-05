@@ -1,7 +1,7 @@
-from .card import Card, CardBase, CardStatus
-from .template import Template, TemplateField, Generation
-from .user import User, ApiKey
-from .passage import Passage
+from .card import Card, CardStatus
+from .passage import Note, Passage
+from .template import Generation, Template, TemplateField
+from .user import ApiKey, User
 
 __all__ = [
     "Card",
@@ -9,8 +9,8 @@ __all__ = [
     "TemplateField",
     "Generation",
     "CardStatus",
-    "CardBase",
     "User",
     "ApiKey",
     "Passage",
+    "Note",
 ]

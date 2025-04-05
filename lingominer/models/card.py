@@ -12,21 +12,19 @@ class CardStatus(str, Enum):
     DELETED = "deleted"
 
 
-class CardBase(SQLModel):
-    paragraph: str = Field(description="the paragraph where the sentence is in")
-    pos_start: int = Field(description="start position of the selection in the text")
-    pos_end: int = Field(description="end position of the selection in the text")
-    url: Optional[str] = Field(description="url of the page")
-    content: dict = Field(description="derived content of the card", sa_type=JSON)
-
-
-class Card(CardBase, table=True):
+class Card(SQLModel, table=True):
     id: str = Field(
         primary_key=True,
         default_factory=lambda: "card_" + uuid.uuid4().hex,
     )
     user_id: str = Field(description="user id", foreign_key="user.id")
+
     status: CardStatus = Field(default=CardStatus.NEW)
+    paragraph: str = Field(description="the paragraph where the sentence is in")
+    pos_start: int = Field(description="start position of the selection in the text")
+    pos_end: int = Field(description="end position of the selection in the text")
+    url: Optional[str] = Field(description="url of the page")
+    content: dict = Field(description="derived content of the card", sa_type=JSON)
 
     template_id: str = Field(
         description="id of the template", foreign_key="template.id"
