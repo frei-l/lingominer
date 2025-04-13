@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -11,6 +12,7 @@ class User(SQLModel, table=True):
     )
     name: str = Field(description="name of the user")
     api_keys: list["ApiKey"] = Relationship(back_populates="user")
+    mochi_api_key: Optional[str] = Field(description="mochi api key")
 
     created_at: datetime = Field(default=datetime.now(timezone.utc))
     modified_at: datetime = Field(

@@ -29,6 +29,7 @@ class NoteCreate(SQLModel):
 
 class NoteDetail(SQLModel):
     id: str = Field(description="id of the note")
+    passage_id: str = Field(description="id of the passage")
     content: str = Field(description="content of the note")
     selected_text: str = Field(description="selected text")
     context: str = Field(description="context of the selected text")

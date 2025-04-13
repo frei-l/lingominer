@@ -1,58 +1,64 @@
 from fastapi.testclient import TestClient
+
 from lingominer.models.template import TemplateLang
 
 
 def test_template_crud(client: TestClient):
     # Test template creation
-    template_data = {
+    template1_data = {
         "name": "Test Template",
-        "lang": TemplateLang.EN,
+        "lang": TemplateLang.en,
     }
-    response = client.post("/templates", json=template_data)
-    assert response.status_code == 200
-    created = response.json()
-    assert created["name"] == template_data["name"]
-    assert created["lang"] == template_data["lang"]
-    assert "id" in created
+    response1 = client.post("/templates", json=template1_data)
+    assert response1.status_code == 200
+    template1 = response1.json()
+    assert template1["name"] == template1_data["name"]
+    assert template1["lang"] == template1_data["lang"]
+    assert "id" in template1
 
     # Test getting single template
-    response = client.get(f"/templates/{created['id']}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == created["id"]
-    assert data["name"] == created["name"]
+    response2 = client.get(f"/templates/{template1['id']}")
+    assert response2.status_code == 200
+    response2_data = response2.json()
+    assert response2_data["id"] == template1["id"]
+    assert response2_data["name"] == template1["name"]
 
     # Test getting all templates
     template2_data = {
         "name": "Test Template 2",
-        "lang": TemplateLang.EN,
+        "lang": TemplateLang.en,
     }
-    response = client.post("/templates", json=template2_data)
-    template2 = response.json()
+    response3 = client.post("/templates", json=template2_data)
+    assert response3.status_code == 200
+    template2 = response3.json()
 
-    response = client.get("/templates")
-    assert response.status_code == 200
-    data = response.json()
+    response4 = client.get("/templates")
+    assert response4.status_code == 200
+    data = response4.json()
     assert isinstance(data, list)
     assert len(data) >= 2
     template_ids = [t["id"] for t in data]
-    assert created["id"] in template_ids
+    assert template1["id"] in template_ids
     assert template2["id"] in template_ids
 
     # Test template deletion
-    response = client.delete(f"/templates/{created['id']}")
-    assert response.status_code == 200
+    response5 = client.delete(f"/templates/{template1['id']}")
+    assert response5.status_code == 200
+    response6 = client.get(f"/templates/{template2['id']}")
+    assert response6.status_code == 200
 
     # Verify deletion
-    response = client.get(f"/templates/{created['id']}")
-    assert response.status_code == 404
+    response7 = client.get(f"/templates/{template1['id']}")
+    assert response7.status_code == 404
+    response8 = client.get(f"/templates/{template2['id']}")
+    assert response8.status_code == 404
 
 
 def test_generation_crud(client: TestClient):
     # First create a template
     template_data = {
         "name": "Test Template",
-        "lang": TemplateLang.EN,
+        "lang": TemplateLang.en,
     }
     response = client.post("/templates", json=template_data)
     template = response.json()
@@ -162,6 +168,10 @@ def test_generation_crud(client: TestClient):
     field_ids = {field["id"] for field in template_data["fields"]}
     assert output1["id"] not in field_ids
     assert output2["id"] not in field_ids
+
+    #  delete template
+    response = client.delete(f"/templates/{template['id']}")
+    assert response.status_code == 200
 
 
 def test_generation_validation(client: TestClient):

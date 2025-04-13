@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-
+from typing import Annotated
 from lingominer.api.auth.security import get_current_user
 from lingominer.api.passages.schemas import (
     NoteCreate,
@@ -71,7 +71,7 @@ async def create_passage(url: str, session: Session = Depends(get_db_session)):
     session.add(passage)
     session.commit()
     session.refresh(passage)
-    return PassageDetail
+    return passage
 
 
 @router.get("", response_model=list[PassageList])
@@ -88,7 +88,9 @@ async def get_passage(passage_id: str, session: Session = Depends(get_db_session
         select(Passage)
         .where(Passage.id == passage_id)
         .where(Passage.user_id == user_id.get())
-    ).first()
+    ).one_or_none()
+    if not passage:
+        raise HTTPException(status_code=404, detail="Passage not found")
     return passage
 
 
@@ -128,3 +130,30 @@ async def create_note(
     session.commit()
     session.refresh(note)
     return note
+
+
+@router.delete("/{passage_id}", status_code=200)
+async def delete_passage(
+    passage_id: str,
+    db_session: Annotated[Session, Depends(get_db_session)],
+):
+    # delete all notes for the passage
+    notes = db_session.exec(
+        select(Note)
+        .where(Note.passage_id == passage_id)
+        .where(Note.user_id == user_id.get())
+    ).all()
+    for note in notes:
+        db_session.delete(note)
+    db_session.commit()
+
+    passage = db_session.exec(
+        select(Passage)
+        .where(Passage.id == passage_id)
+        .where(Passage.user_id == user_id.get())
+    ).one_or_none()
+    if not passage:
+        raise HTTPException(status_code=404, detail="Passage not found")
+    db_session.delete(passage)
+    db_session.commit()
+    return {"message": "Passage deleted successfully"}

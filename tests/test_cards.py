@@ -1,10 +1,13 @@
+import pytest
 from fastapi.testclient import TestClient
+
 from lingominer.models.template import TemplateLang
 
 
-def test_card_creation_flow(client: TestClient):
+@pytest.fixture(scope="module")
+def example_template(client: TestClient):
     # 1. 创建模板
-    template_data = {"name": "Vocabulary Processing Flow", "lang": TemplateLang.EN}
+    template_data = {"name": "Vocabulary Processing Flow", "lang": TemplateLang.en}
     response = client.post("/templates", json=template_data)
     assert response.status_code == 200
     template = response.json()
@@ -109,9 +112,16 @@ def test_card_creation_flow(client: TestClient):
                 f"/templates/{template['id']}/fields", json=field_data
             )
             assert response.status_code == 200
+    yield template
 
-    # 3. 创建卡片（对应algo.py中的main流程）
-    test_text = "In addition to its rings, Saturn has 25 satellites that measure at least 6 miles (10 kilometers) in diameter, and several smaller satellites. The largest of Saturn’s satellites, Titan, has a diameter of about 3,200 miles—larger than the planets Mercury and Pluto. Titan is one of the few satellites in the solar system known to have an atmosphere. Its atmosphere consists largely of nitrogen. Many of Saturn’s satellites have large craters For example, Mimas has a crater that covers about one-third the diameter of the satellite."
+    # 删除模板
+    response = client.delete(f"/templates/{template['id']}")
+    assert response.status_code == 200
+
+
+def test_card_crud(client: TestClient, example_template):
+    # Test card creation
+    test_text = "In addition to its rings, Saturn has 25 satellites that measure at least 6 miles (10 kilometers) in diameter, and several smaller satellites. The largest of Saturn's satellites, Titan, has a diameter of about 3,200 miles—larger than the planets Mercury and Pluto. Titan is one of the few satellites in the solar system known to have an atmosphere. Its atmosphere consists largely of nitrogen. Many of Saturn's satellites have large craters For example, Mimas has a crater that covers about one-third the diameter of the satellite."
 
     card_data = {
         "paragraph": test_text,
@@ -119,11 +129,13 @@ def test_card_creation_flow(client: TestClient):
         "pos_end": 439,
     }
 
-    response = client.post(f"/cards?template_id={template['id']}", json=card_data)
+    response = client.post(
+        f"/cards?template_id={example_template['id']}", json=card_data
+    )
     assert response.status_code == 200, response.text
     card = response.json()
 
-    # 4. 验证处理结果
+    # Verify card content
     content = card["content"]
     assert "word" in content
     assert content["word"] == "craters"
@@ -134,5 +146,33 @@ def test_card_creation_flow(client: TestClient):
     assert "explanation" in content
     assert "summary" in content
     assert "simple_sentence" in content
-    assert "crater" in content["lemma"].lower()  # 验证词根提取
-    assert len(content["summary"]) < len(test_text)  # 验证摘要比原文短
+    assert "crater" in content["lemma"].lower()  # Verify lemma extraction
+    assert len(content["summary"]) < len(
+        test_text
+    )  # Verify summary is shorter than text
+
+    # Test getting all cards
+    response = client.get("/cards")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    card_ids = [c["id"] for c in data]
+    assert card["id"] in card_ids
+
+    # Test getting cards by template
+    response = client.get(f"/cards?template_id={example_template['id']}")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    card_ids = [c["id"] for c in data]
+    assert card["id"] in card_ids
+
+    # Test card deletion
+    response = client.delete(f"/cards/{card['id']}")
+    assert response.status_code == 200
+
+    # Verify deletion
+    response = client.get(f"/cards/{card['id']}")
+    assert response.status_code == 404

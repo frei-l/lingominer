@@ -1,4 +1,5 @@
 from .card import Card, CardStatus
+from .mochi import MochiMapping
 from .passage import Note, Passage
 from .template import Generation, Template, TemplateField
 from .user import ApiKey, User
@@ -13,4 +14,5 @@ __all__ = [
     "ApiKey",
     "Passage",
     "Note",
+    "MochiMapping",
 ]

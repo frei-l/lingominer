@@ -1,6 +1,6 @@
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from lingominer.api.auth.security import get_current_user
@@ -26,6 +26,17 @@ async def get_cards(
         stmt = select(Card)
     cards = db_session.exec(stmt).all()
     return cards
+
+
+@router.get("/{card_id}", response_model=Card)
+async def get_card(
+    db_session: Annotated[Session, Depends(get_db_session)],
+    card_id: str,
+):
+    card = db_session.exec(select(Card).where(Card.id == card_id)).one_or_none()
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+    return card
 
 
 @router.post("", response_model=Card)
@@ -90,7 +101,9 @@ async def delete_card_view(
     db_session: Annotated[Session, Depends(get_db_session)],
     card_id: str,
 ):
-    card = db_session.exec(select(Card).where(Card.id == card_id)).one()
+    card = db_session.exec(select(Card).where(Card.id == card_id)).one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
     db_session.delete(card)
     db_session.commit()
     return card
