@@ -9,9 +9,11 @@ class MochiMappingField(TypedDict):
 
 
 class MochiMapping(SQLModel, table=True):
-    mochi_template_id: str = Field(primary_key=True)
-    mochi_deck_id: str
+    mochi_deck_id: str = Field(primary_key=True)
+    mochi_template_id: str
+
     user_id: str
+
     lingominer_template_id: str
     lingominer_template_name: str
     mapping: dict[str, MochiMappingField] = Field(

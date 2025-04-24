@@ -1,124 +1,138 @@
-from typing import Annotated, Optional, Union
+from typing import Annotated, Optional, TypedDict, Union
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from lingominer.api.auth.security import get_current_user
-from lingominer.api.mochi.schema import MochiMappingCreate
+from lingominer.api.mochi.schema import (
+    MappingField,
+    MochiDeckMapping,
+    MochiDeckMappingItem,
+    MochiMappingCreate,
+)
 from lingominer.database import get_db_session
 from lingominer.models.mochi import MochiMapping
 from lingominer.models.user import User
 
 router = APIRouter()
-url = "https://app.mochi.cards/api/templates"
+base_url = "https://app.mochi.cards/api"
 
 
-class Fields(BaseModel):
+class MochiField(TypedDict):
     id: str
     name: str
     type: Optional[str] = None
     options: Optional[dict[str, Union[str, bool]]] = None
     source: Optional[str] = None
 
-    lingominer_field_name: Optional[str] = None
-    lingominer_field_id: Optional[str] = None
 
-
-class MochiTemplate(BaseModel):
-    content: str
-    fields: dict[str, Fields]
-    id: str
+class MochiTemplate(TypedDict):
     name: str
+    content: str
+    fields: dict[str, MochiField]
+    id: str
 
-    lingominer_template_name: Optional[str] = None
-    lingominer_template_id: Optional[str] = None
+
+MochiDeck = TypedDict("MochiDeck", {"id": str, "name": str, "template-id": str})
 
 
-class MochiTemplateList(BaseModel):
+class MochiDeckList(TypedDict):
     bookmark: str
-    docs: list[MochiTemplate]
+    docs: list[MochiDeck]
 
 
-@router.get("", response_model=MochiTemplateList)
-async def get_mochi_templates(
+@router.get("", response_model=list[MochiDeckMappingItem])
+async def get_mochi_deck_mappings(
     db_session: Annotated[Session, Depends(get_db_session)],
     user: Annotated[User, Depends(get_current_user)],
 ):
     if not user.mochi_api_key:
         raise HTTPException(status_code=400, detail="User has no mochi api key")
-    response = requests.get(url, auth=(user.mochi_api_key, ""))
-    mochi_templates = MochiTemplateList.model_validate(response.json())
 
+    mochi_decks: MochiDeckList = requests.get(
+        base_url + "/decks", auth=(user.mochi_api_key, "")
+    ).json()
     mochi_mappings = (
         db_session.query(MochiMapping).filter(MochiMapping.user_id == user.id).all()
     )
+
+    deck_items = [
+        MochiDeckMappingItem(
+            id=i["id"],
+            name=i["name"],
+            template_id=i["template-id"],
+        )
+        for i in mochi_decks["docs"]
+    ]
     for mochi_mapping in mochi_mappings:
-        # find first matching template
-        matching_template = next(
-            (
-                t
-                for t in mochi_templates.docs
-                if t.id == mochi_mapping.mochi_template_id
-            ),
+        matched_deck = next(
+            (t for t in deck_items if t.id == mochi_mapping.mochi_deck_id),
             None,
         )
-        if matching_template:
-            matching_template.lingominer_template_name = (
+        if matched_deck:
+            matched_deck.lingominer_template_name = (
                 mochi_mapping.lingominer_template_name
             )
-            matching_template.lingominer_template_id = (
-                mochi_mapping.lingominer_template_id
-            )
+            matched_deck.lingominer_template_id = mochi_mapping.lingominer_template_id
 
-            for field in matching_template.fields.values():
-                if field.id in mochi_mapping.mapping:
-                    mapping = mochi_mapping.mapping[field.id]
-                    field.lingominer_field_name = mapping["name"]
-                    field.lingominer_field_id = mapping["id"]
-
-    return mochi_templates
+    return deck_items
 
 
-@router.get("/{mochi_template_id}", response_model=MochiTemplate)
-async def get_mochi_template(
+@router.get("/{mochi_deck_id}", response_model=MochiDeckMapping)
+async def get_mochi_deck_mapping(
     db_session: Annotated[Session, Depends(get_db_session)],
     user: Annotated[User, Depends(get_current_user)],
-    mochi_template_id: str,
+    mochi_deck_id: str,
 ):
     if not user.mochi_api_key:
         raise HTTPException(status_code=400, detail="User has no mochi api key")
-    response = requests.get(f"{url}/{mochi_template_id}", auth=(user.mochi_api_key, ""))
-    mochi_template = MochiTemplate.model_validate(response.json())
+    deck_info: MochiDeck = requests.get(
+        f"{base_url}/decks/{mochi_deck_id}", auth=(user.mochi_api_key, "")
+    ).json()
+    template_info: MochiTemplate = requests.get(
+        f"{base_url}/templates/{deck_info['template-id']}",
+        auth=(user.mochi_api_key, ""),
+    ).json()
+    deck_mapping = MochiDeckMapping(
+        id=deck_info["id"],
+        name=deck_info["name"],
+        template_id=deck_info["template-id"],
+        template_name=template_info["name"],
+        template_content=template_info["content"],
+        template_fields={
+            k: MappingField.model_validate(v)
+            for k, v in template_info["fields"].items()
+        },
+    )
 
-    mochi_mapping = (
+    mapping_in_db = (
         db_session.query(MochiMapping)
-        .filter(MochiMapping.mochi_template_id == mochi_template_id)
+        .filter(MochiMapping.mochi_deck_id == mochi_deck_id)
         .filter(MochiMapping.user_id == user.id)
         .first()
     )
-    if mochi_mapping:
-        mochi_template.lingominer_template_name = mochi_mapping.lingominer_template_name
-        mochi_template.lingominer_template_id = mochi_mapping.lingominer_template_id
-        for field in mochi_template.fields.values():
-            if field.id in mochi_mapping.mapping:
-                mapping = mochi_mapping.mapping[field.id]
+    if mapping_in_db:
+        deck_mapping.lingominer_template_name = mapping_in_db.lingominer_template_name
+        deck_mapping.lingominer_template_id = mapping_in_db.lingominer_template_id
+
+        for field_id, field in deck_mapping.template_fields.items():
+            if mapping := mapping_in_db.mapping.get(field_id):
                 field.lingominer_field_name = mapping["name"]
                 field.lingominer_field_id = mapping["id"]
-    return mochi_template
+    return deck_mapping
 
 
-@router.post("/{mochi_template_id}/mapping", response_model=MochiMapping)
+@router.post("")
 async def create_mochi_mapping(
     db_session: Annotated[Session, Depends(get_db_session)],
-    mochi_template_id: str,
-    mochi_mapping: MochiMappingCreate,
+    mapping_create: MochiMappingCreate,
     user: Annotated[User, Depends(get_current_user)],
 ):
     existing_mochi_mapping = (
         db_session.query(MochiMapping)
-        .filter(MochiMapping.mochi_template_id == mochi_template_id)
+        .filter(MochiMapping.mochi_deck_id == mapping_create.mochi_deck_id)
+        .filter(MochiMapping.mochi_template_id == mapping_create.mochi_template_id)
         .filter(MochiMapping.user_id == user.id)
         .first()
     )
@@ -126,32 +140,33 @@ async def create_mochi_mapping(
     if existing_mochi_mapping:
         db_session.delete(existing_mochi_mapping)
 
-    mochi_mapping = MochiMapping(
-        mochi_template_id=mochi_template_id,
-        lingominer_template_id=mochi_mapping.lingominer_template_id,
-        lingominer_template_name=mochi_mapping.lingominer_template_name,
-        mapping=mochi_mapping.mapping,
+    mapping_create = MochiMapping(
+        mochi_deck_id=mapping_create.mochi_deck_id,
+        mochi_template_id=mapping_create.mochi_template_id,
+        lingominer_template_id=mapping_create.lingominer_template_id,
+        lingominer_template_name=mapping_create.lingominer_template_name,
+        mapping=mapping_create.mapping,
         user_id=user.id,
     )
 
-    db_session.add(mochi_mapping)
+    db_session.add(mapping_create)
     db_session.commit()
-    db_session.refresh(mochi_mapping)
-    return mochi_mapping
 
-@router.delete("/{mochi_template_id}/mapping", response_model=MochiMapping)
+
+@router.delete("/{mochi_deck_id}")
 async def delete_mochi_mapping(
     db_session: Annotated[Session, Depends(get_db_session)],
-    mochi_template_id: str,
+    mochi_deck_id: str,
     user: Annotated[User, Depends(get_current_user)],
 ):
     mochi_mapping = (
         db_session.query(MochiMapping)
-        .filter(MochiMapping.mochi_template_id == mochi_template_id)
+        .filter(MochiMapping.mochi_deck_id == mochi_deck_id)
         .filter(MochiMapping.user_id == user.id)
         .first()
     )
     db_session.delete(mochi_mapping)
+
 
 @router.post("/{mochi_template_id}/cards", response_model=MochiMapping)
 async def create_mochi_cards(
