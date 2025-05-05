@@ -12,6 +12,7 @@ from lingominer.api.mochi.schema import (
     MochiMappingCreate,
 )
 from lingominer.database import get_db_session
+from lingominer.models.card import Card
 from lingominer.models.mochi import MochiMapping
 from lingominer.models.user import User
 
@@ -46,6 +47,7 @@ class MochiDeckList(TypedDict):
 async def get_mochi_deck_mappings(
     db_session: Annotated[Session, Depends(get_db_session)],
     user: Annotated[User, Depends(get_current_user)],
+    lm_template_id: Optional[str] = None,
 ):
     if not user.mochi_api_key:
         raise HTTPException(status_code=400, detail="User has no mochi api key")
@@ -53,9 +55,17 @@ async def get_mochi_deck_mappings(
     mochi_decks: MochiDeckList = requests.get(
         base_url + "/decks", auth=(user.mochi_api_key, "")
     ).json()
-    mochi_mappings = (
-        db_session.query(MochiMapping).filter(MochiMapping.user_id == user.id).all()
-    )
+    if lm_template_id:
+        mochi_mappings = (
+            db_session.query(MochiMapping)
+            .filter(MochiMapping.user_id == user.id)
+            .filter(MochiMapping.lingominer_template_id == lm_template_id)
+            .all()
+        )
+    else:
+        mochi_mappings = (
+            db_session.query(MochiMapping).filter(MochiMapping.user_id == user.id).all()
+        )
 
     deck_items = [
         MochiDeckMappingItem(
@@ -168,11 +178,63 @@ async def delete_mochi_mapping(
     db_session.delete(mochi_mapping)
 
 
-@router.post("/{mochi_template_id}/cards", response_model=MochiMapping)
+@router.post("/{mochi_deck_id}/cards", response_model=MochiMapping)
 async def create_mochi_cards(
     db_session: Annotated[Session, Depends(get_db_session)],
-    mochi_template_id: str,
-    mochi_mapping: MochiMappingCreate,
+    mochi_deck_id: str,
+    lm_card_id: str,
     user: Annotated[User, Depends(get_current_user)],
 ):
-    pass
+    card = (
+        db_session.query(Card)
+        .filter(Card.id == lm_card_id)
+        .filter(Card.user_id == user.id)
+        .first()
+    )
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    mochi_mapping = (
+        db_session.query(MochiMapping)
+        .filter(MochiMapping.mochi_deck_id == mochi_deck_id)
+        .filter(MochiMapping.user_id == user.id)
+        .first()
+    )
+    if not mochi_mapping:
+        raise HTTPException(status_code=404, detail="Mochi mapping not found")
+
+    if not user.mochi_api_key:
+        raise HTTPException(status_code=400, detail="User has no mochi api key")
+
+    # Map fields from LingoMiner card to Mochi card based on the mapping
+    mochi_fields = {}
+    card_content = card.content
+
+    for mochi_field_id, field_mapping in mochi_mapping.mapping.items():
+        lm_field_name = field_mapping.get("name")
+        if lm_field_name and lm_field_name in card_content:
+            mochi_fields[mochi_field_id] = {
+                "id": mochi_field_id,
+                "value": card_content[lm_field_name],
+            }
+
+    # Prepare payload for Mochi API
+    payload = {
+        "deck-id": mochi_deck_id,
+        "template-id": mochi_mapping.mochi_template_id,
+        "fields": mochi_fields,
+        "content": "",  # Optional content can be added here if needed
+    }
+
+
+    # Create card in Mochi
+    response = requests.post(
+        f"{base_url}/cards/", json=payload, auth=(user.mochi_api_key, "")
+    )
+
+    if response.status_code >= 400:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=f"Failed to create card in Mochi: {response.text}",
+        )
+
+    return mochi_mapping

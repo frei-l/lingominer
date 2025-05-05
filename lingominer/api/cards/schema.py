@@ -42,5 +42,6 @@ class CardResponse(BaseModel):
     url: Optional[str] = None
     content: dict
     status: CardStatus
+    template_id: str
     created_at: datetime
     modified_at: datetime
