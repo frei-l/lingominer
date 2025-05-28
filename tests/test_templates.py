@@ -57,35 +57,35 @@ def test_template_crud(client: TestClient):
 def test_generation_crud(client: TestClient):
     # First create a template
     template_data = {
-        "name": "Test Template",
+        "name": "MyTemplate",
         "lang": TemplateLang.en,
     }
     response = client.post("/templates", json=template_data)
     template = response.json()
 
     # Test generation creation
-    generation_data = {
-        "name": "Test Generation",
+    generation_data_1 = {
+        "name": "Generation 1",
         "method": "completion",
         "prompt": "This is a test prompt",
         "inputs": [],
     }
     response = client.post(
-        f"/templates/{template['id']}/generations", json=generation_data
+        f"/templates/{template['id']}/generations", json=generation_data_1
     )
     assert response.status_code == 200
-    created_generation = response.json()
-    assert created_generation["name"] == generation_data["name"]
-    assert created_generation["method"] == generation_data["method"]
-    assert created_generation["prompt"] == generation_data["prompt"]
-    assert "id" in created_generation
+    generation_1 = response.json()
+    assert generation_1["name"] == generation_data_1["name"]
+    assert generation_1["method"] == generation_data_1["method"]
+    assert generation_1["prompt"] == generation_data_1["prompt"]
+    assert "id" in generation_1
 
     # Create output fields for the generation
     output_field_data1 = {
         "name": "output1",
         "type": "text",
         "description": "First output",
-        "generation_id": created_generation["id"],
+        "generation_id": generation_1["id"],
     }
     response = client.post(
         f"/templates/{template['id']}/fields", json=output_field_data1
@@ -97,7 +97,7 @@ def test_generation_crud(client: TestClient):
         "name": "output2",
         "type": "text",
         "description": "Second output",
-        "generation_id": created_generation["id"],
+        "generation_id": generation_1["id"],
     }
     response = client.post(
         f"/templates/{template['id']}/fields", json=output_field_data2
@@ -105,14 +105,32 @@ def test_generation_crud(client: TestClient):
     assert response.status_code == 200
     output2 = response.json()
 
+    generation_data_2 = {
+        "name": "Generation 2",
+        "method": "completion",
+        "prompt": "This is a test prompt, {{output1}}",
+        "inputs": ["output1"],
+    }
+    response = client.post(
+        f"/templates/{template['id']}/generations", json=generation_data_2
+    )
+    assert response.status_code == 200
+    generation_2 = response.json()
+    assert generation_2["name"] == generation_data_2["name"]
+    assert generation_2["method"] == generation_data_2["method"]
+    assert generation_2["prompt"] == generation_data_2["prompt"]
+    assert set([f["name"] for f in generation_2["inputs"]]) == set(
+        generation_data_2["inputs"]
+    )
+
     # Test getting single generation and verify fields
     response = client.get(
-        f"/templates/{template['id']}/generations/{created_generation['id']}"
+        f"/templates/{template['id']}/generations/{generation_1['id']}"
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == created_generation["id"]
-    assert data["name"] == created_generation["name"]
+    assert data["id"] == generation_1["id"]
+    assert data["name"] == generation_1["name"]
     assert data["template_id"] == template["id"]
     assert len(data["inputs"]) == 0
     assert len(data["outputs"]) == 2
@@ -121,18 +139,23 @@ def test_generation_crud(client: TestClient):
     assert output2["id"] in output_ids
 
     # Test updating generation
-    update_data = {"name": "Updated Generation", "prompt": "Updated prompt"}
+    update_data = {
+        "name": "Updated Generation",
+        "prompt": "Updated prompt, {{output2}}",
+        "inputs": ["output2"],
+    }
     response = client.patch(
-        f"/templates/{template['id']}/generations/{created_generation['id']}",
+        f"/templates/{template['id']}/generations/{generation_2['id']}",
         json=update_data,
     )
     assert response.status_code == 200
     updated = response.json()
     assert updated["name"] == update_data["name"]
     assert updated["prompt"] == update_data["prompt"]
+    assert set([f["name"] for f in updated["inputs"]]) == set(update_data["inputs"])
 
     # Test updating output field
-    field_update = {"description": "Updated output description"}
+    field_update = {"description": "Updated output description {{output2}}"}
     response = client.patch(
         f"/templates/{template['id']}/fields/{output1['id']}", json=field_update
     )
@@ -142,7 +165,7 @@ def test_generation_crud(client: TestClient):
 
     # Verify field update through generation details
     response = client.get(
-        f"/templates/{template['id']}/generations/{created_generation['id']}"
+        f"/templates/{template['id']}/generations/{generation_1['id']}"
     )
     assert response.status_code == 200
     data = response.json()
@@ -151,16 +174,26 @@ def test_generation_crud(client: TestClient):
 
     # Test generation deletion
     response = client.delete(
-        f"/templates/{template['id']}/generations/{created_generation['id']}"
+        f"/templates/{template['id']}/generations/{generation_2['id']}"
     )
     assert response.status_code == 200
 
-    # Verify deletion
     response = client.get(
-        f"/templates/{template['id']}/generations/{created_generation['id']}"
+        f"/templates/{template['id']}/generations/{generation_2['id']}"
     )
     assert response.status_code == 404
 
+    response = client.delete(
+        f"/templates/{template['id']}/generations/{generation_1['id']}"
+    )
+    assert response.status_code == 200
+
+    response = client.get(
+        f"/templates/{template['id']}/generations/{generation_1['id']}"
+    )
+    assert response.status_code == 404
+
+    assert response.status_code == 404
     # Verify fields are deleted by checking generation details
     response = client.get(f"/templates/{template['id']}")
     assert response.status_code == 200

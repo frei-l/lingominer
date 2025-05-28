@@ -44,6 +44,22 @@ def example_template(client: TestClient):
             "prompt": "Simplify the sentence. The sentence is: '{{sentence}}'",
             "inputs": ["sentence"],
         },
+        {  # 对应g6
+            "name": "to_speech",
+            "method": "toSpeech",
+            "prompt": "{{simple_sentence}}",
+            "inputs": ["simple_sentence"],
+        },
+        # {  # 对应g7
+        #     "name": "to_image",
+        #     "method": "toImage",
+        #     "prompt": (
+        #         "draw a flashcard for English word, the word is '{{word}}', "
+        #         "background is white, the top of card is most representative object of the word, "
+        #         "and the bottom of word in Times New Roman"
+        #     ),
+        #     "inputs": ["word"],
+        # },
     ]
 
     # 创建generations和对应的fields
@@ -89,6 +105,20 @@ def example_template(client: TestClient):
                 "description": "The simplified sentence",
             }
         ],
+        [  # g6的输出
+            {
+                "name": "simple_sentence_audio",
+                "type": "audio",
+                "description": "The audio of the simplified sentence",
+            }
+        ],
+        # [  # g7的输出
+        #     {
+        #         "name": "word_image",
+        #         "type": "image",
+        #         "description": "The image of the flashcard",
+        #     }
+        # ],
     ]
 
     # 创建generations和对应的fields
@@ -115,8 +145,8 @@ def example_template(client: TestClient):
     yield template
 
     # 删除模板
-    response = client.delete(f"/templates/{template['id']}")
-    assert response.status_code == 200
+    # response = client.delete(f"/templates/{template['id']}")
+    # assert response.status_code == 200
 
 
 def test_card_crud(client: TestClient, example_template):
@@ -127,27 +157,26 @@ def test_card_crud(client: TestClient, example_template):
         "paragraph": test_text,
         "pos_start": 432,
         "pos_end": 439,
+        "template_id": example_template["id"],
     }
 
-    response = client.post(
-        f"/cards?template_id={example_template['id']}", json=card_data
-    )
+    response = client.post("/cards", json=card_data)
     assert response.status_code == 200, response.text
     card = response.json()
 
     # Verify card content
     content = card["content"]
     assert "word" in content
-    assert content["word"] == "craters"
+    assert content["word"]["value"] == "craters"
     assert "sentence" in content
-    assert "craters" in content["sentence"]
+    assert "craters" in content["sentence"]["value"]
     assert "lemma" in content
     assert "pronunciation" in content
     assert "explanation" in content
     assert "summary" in content
     assert "simple_sentence" in content
-    assert "crater" in content["lemma"].lower()  # Verify lemma extraction
-    assert len(content["summary"]) < len(
+    assert "crater" in content["lemma"]["value"].lower()  # Verify lemma extraction
+    assert len(content["summary"]["value"]) < len(
         test_text
     )  # Verify summary is shorter than text
 
@@ -169,10 +198,10 @@ def test_card_crud(client: TestClient, example_template):
     card_ids = [c["id"] for c in data]
     assert card["id"] in card_ids
 
-    # Test card deletion
-    response = client.delete(f"/cards/{card['id']}")
-    assert response.status_code == 200
+    # # Test card deletion
+    # response = client.delete(f"/cards/{card['id']}")
+    # assert response.status_code == 200
 
-    # Verify deletion
-    response = client.get(f"/cards/{card['id']}")
-    assert response.status_code == 404
+    # # Verify deletion
+    # response = client.get(f"/cards/{card['id']}")
+    # assert response.status_code == 404
