@@ -12,9 +12,7 @@ from lingominer.api.templates.schema import (
 )
 from lingominer.config import CARD_DEFAULT_FIELDS
 from lingominer.ctx import user_id
-from lingominer.exception import ResourceConflict
 from lingominer.logger import logger
-from lingominer.models.card import Card
 from lingominer.models.template import Generation, Template, TemplateField, TemplateLang
 
 # Template
@@ -41,10 +39,12 @@ def get_template(db_session: Session, template_id: str):
     template = db_session.exec(stmt).first()
     return template
 
+
 def get_template_by_lang(db_session: Session, lang: TemplateLang):
     stmt = select(Template).where(Template.lang == lang)
     template = db_session.exec(stmt).first()
     return template
+
 
 def delete_template(db_session: Session, template_id: str):
     # Check if template exists
@@ -55,11 +55,6 @@ def delete_template(db_session: Session, template_id: str):
         return
 
     # Check if any cards are using this template
-    cards_stmt = select(Card).where(Card.template_id == template_id)
-    if db_session.exec(cards_stmt).first() is not None:
-        raise ResourceConflict(
-            f"Cannot delete template {template_id} as it is being used by cards"
-        )
 
     # Delete all GenerationInputFieldLink entries for this template's generations
     for generation in template.generations:
@@ -139,7 +134,26 @@ def update_generation(
     if not generation:
         return None
 
-    update_data = generation_update.model_dump(exclude_unset=True)
+    fields_available = db_session.exec(
+        select(TemplateField).where(
+            TemplateField.name.in_(generation_update.inputs)
+            & (TemplateField.template_id == template_id)
+        )
+    ).all()
+
+    keys_available = set([f.name for f in fields_available])
+    keys_required = set(generation_update.inputs) - set(CARD_DEFAULT_FIELDS)
+
+    if keys_available != keys_required:
+        missing_keys = keys_required - keys_available
+        raise HTTPException(
+            status_code=422,
+            detail=f"Some inputs fields are not found: {missing_keys}",
+        )
+
+    generation.inputs = fields_available
+
+    update_data = generation_update.model_dump(exclude_unset=True, exclude={"inputs"})
     for key, value in update_data.items():
         setattr(generation, key, value)
 

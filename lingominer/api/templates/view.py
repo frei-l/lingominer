@@ -18,7 +18,6 @@ from lingominer.api.templates.schema import (
 )
 from lingominer.database import get_db_session
 from lingominer.exception import ResourceConflict
-from lingominer.models.template import Generation
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -67,7 +66,7 @@ async def delete_template_view(
 # Generation
 
 
-@router.post("/{template_id}/generations", response_model=Generation)
+@router.post("/{template_id}/generations", response_model=GenerationDetailResponse)
 async def create_generation_view(
     db_session: Annotated[Session, Depends(get_db_session)],
     template_id: str,
