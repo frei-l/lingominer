@@ -16,7 +16,9 @@ async def generate_audio(text: str, filename: str, voice_code: str):
     speech_synthesizer = speechsdk.SpeechSynthesizer(
         speech_config=speech_config, audio_config=audio_config
     )
-    speech_synthesis_result = await asyncio.to_thread(speech_synthesizer.speak_text_async(text).get) 
+    speech_synthesis_result = await asyncio.to_thread(
+        speech_synthesizer.speak_text_async(text).get
+    )
 
     if (
         speech_synthesis_result.reason
@@ -29,6 +31,5 @@ async def generate_audio(text: str, filename: str, voice_code: str):
         if cancellation_details.reason == speechsdk.CancellationReason.Error:
             if cancellation_details.error_details:
                 logger.error(f"Error details: {cancellation_details.error_details}")
-                logger.error(
-                    "Did you set the speech resource key and region values?"
-                )
+                logger.error("Did you set the speech resource key and region values?")
+

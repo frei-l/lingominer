@@ -214,7 +214,7 @@ async def create_mochi_cards(
         if lm_field_name and lm_field_name in card_content:
             mochi_fields[mochi_field_id] = {
                 "id": mochi_field_id,
-                "value": card_content[lm_field_name],
+                "value": card_content[lm_field_name].get("value"),
             }
 
     # Prepare payload for Mochi API
@@ -224,7 +224,6 @@ async def create_mochi_cards(
         "fields": mochi_fields,
         "content": "",  # Optional content can be added here if needed
     }
-
 
     # Create card in Mochi
     response = requests.post(

@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -10,7 +11,7 @@ from pydantic import BaseModel
 class FieldType(str, Enum):
     TEXT = "text"
     AUDIO = "audio"
-
+    IMAGE = "image"
 
 class TemplateFieldCreate(BaseModel):
     name: str
@@ -74,6 +75,8 @@ class TemplateResponse(BaseModel):
     id: str
     name: str
     lang: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class TemplateDetailResponse(TemplateResponse):
