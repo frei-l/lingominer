@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Optional
 
@@ -8,6 +9,7 @@ from sqlmodel import Column, Enum, Field, Relationship, SQLModel, UniqueConstrai
 class FieldType(StrEnum):
     TEXT = "text"
     AUDIO = "audio"
+    IMAGE = "image"
 
 
 class TemplateLang(StrEnum):
@@ -30,6 +32,12 @@ class Template(SQLModel, table=True):
 
     generations: list["Generation"] = Relationship(back_populates="template")
     fields: list["TemplateField"] = Relationship(back_populates="template")
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+    )
 
 
 class GenerationInputFieldLink(SQLModel, table=True):
@@ -64,6 +72,12 @@ class Generation(SQLModel, table=True):
         back_populates="source",
     )
 
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+    )
+
 
 class TemplateField(SQLModel, table=True):
     __table_args__ = (
@@ -89,4 +103,10 @@ class TemplateField(SQLModel, table=True):
     referenced: list[Generation] = Relationship(
         back_populates="inputs",
         link_model=GenerationInputFieldLink,
+    )
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
