@@ -1,12 +1,11 @@
-from typing import Optional
 from pathlib import Path
-
-from pydantic import Field
-
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from lingominer.logger import logger
+from typing import Optional
 
 from dotenv import load_dotenv
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from lingominer.logger import logger
 
 load_dotenv(override=True)
 class Settings(BaseSettings):
@@ -20,11 +19,11 @@ class Settings(BaseSettings):
 
     jina_api_key: str
 
-    mysql_host: Optional[str] = None
-    mysql_port: Optional[int] = 3306
-    mysql_user: Optional[str] = None
-    mysql_password: Optional[str] = None
-    mysql_db: Optional[str] = "lingominer"
+    database_host: Optional[str] = None
+    database_port: Optional[int] = 3306
+    database_user: Optional[str] = None
+    database_password: Optional[str] = None
+    database_db: Optional[str] = "lingominer"
 
 
 
@@ -40,9 +39,7 @@ if not DATABASE_DIR.exists():
     DATABASE_DIR.mkdir(parents=True, exist_ok=True)
 
 DICTIONARY_DIR = DATABASE_DIR / "dictionary.db"
-DB_DIR = DATABASE_DIR / "lingominer.db"
 
-CHROMA_DIR = DATABASE_DIR / "chroma"
 AUDIO_DIR = DATABASE_DIR / "audio"
 
 CARD_DEFAULT_FIELDS = ["paragraph", "decorated_paragraph"]

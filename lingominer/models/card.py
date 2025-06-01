@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
+from pgvector.sqlalchemy import Vector
 from sqlmodel import JSON, Field, SQLModel
 
 
@@ -25,6 +26,7 @@ class Card(SQLModel, table=True):
     pos_end: int = Field(description="end position of the selection in the text")
     url: Optional[str] = Field(description="url of the page")
     content: dict = Field(description="derived content of the card", sa_type=JSON)
+    embedding: Any = Field(sa_type=Vector(1024))
 
     template_id: str = Field(
         description="id of the template", foreign_key="template.id"
